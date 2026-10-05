@@ -1,0 +1,20 @@
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { getShiurSkipSeconds, useListener, type ListenerRecording } from '@/components/listener-provider';
+import { loadListenerRecordings } from '@/lib/public-recordings';
+
+export default function FavoritesScreen() {
+  const { favorites, toggleFavorite, play, player, activeRecording, status } = useListener();
+  const [recordings, setRecordings] = useState<ListenerRecording[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    loadListenerRecordings().then(setRecordings).catch(() => setError('The Torat Tsion library could not be reached. Check your connection and try again.')).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  const items = recordings.filter((recording) => favorites.includes(recording.id));
+  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.container}><Text style={styles.eyebrow}>YOUR LIBRARY</Text><Text style={styles.title}>Favorites</Text>{loading ? <ActivityIndicator color="#2d6cdf" style={styles.loading} /> : error ? <View style={styles.errorPanel}><Text style={styles.error}>{error}</Text><Pressable onPress={load} style={styles.retry}><Text style={styles.retryText}>Try again</Text></Pressable></View> : items.length === 0 ? <Text style={styles.empty}>Favorite recordings will appear here.</Text> : items.map((recording) => { const skipSeconds = getShiurSkipSeconds(recording); const active = activeRecording?.id === recording.id; return <View key={recording.id} style={styles.row}><View style={styles.copy}><Text style={styles.recordingTitle}>{recording.title}</Text><Text style={styles.meta}>{recording.speaker} · {recording.category}</Text></View>{skipSeconds !== null && <Pressable onPress={() => { if (active) { player.seekTo(skipSeconds); if (!status.playing) player.play(); } else play(recording, items, skipSeconds); }} style={styles.skip}><Text style={styles.skipText}>Skip to Shiur</Text></Pressable>}<Pressable onPress={() => toggleFavorite(recording.id)}><Text style={styles.star}>★</Text></Pressable><Pressable onPress={() => play(recording, items)} style={styles.play}><Text style={styles.playText}>{active && status.playing ? 'Ⅱ' : '▶'}</Text></Pressable></View>; })}</ScrollView></SafeAreaView>;
+}
+const styles = StyleSheet.create({ safe: { backgroundColor: '#f4f8ff', flex: 1 }, container: { padding: 22, paddingBottom: 130 }, eyebrow: { color: '#2d6cdf', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }, title: { color: '#142950', fontSize: 30, fontWeight: '700', marginTop: 7 }, loading: { marginTop: 40 }, empty: { color: '#5b6e8d', marginTop: 32 }, errorPanel: { backgroundColor: '#ffffff', borderColor: '#bfd4ff', borderRadius: 12, borderWidth: 1, marginTop: 24, padding: 16 }, error: { color: '#8f2d2d', lineHeight: 20 }, retry: { alignSelf: 'flex-start', backgroundColor: '#2d6cdf', borderRadius: 8, marginTop: 12, paddingHorizontal: 12, paddingVertical: 9 }, retryText: { color: '#ffffff', fontWeight: '800' }, row: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 12, padding: 14 }, copy: { flex: 1 }, recordingTitle: { color: '#142950', fontSize: 14, fontWeight: '700' }, meta: { color: '#5b6e8d', fontSize: 11, marginTop: 5 }, skip: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 6 }, skipText: { color: '#1d4ea8', fontSize: 9, fontWeight: '800' }, star: { color: '#2d6cdf', fontSize: 21 }, play: { alignItems: 'center', backgroundColor: '#2d6cdf', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 }, playText: { color: '#ffffff', fontWeight: '800' } });

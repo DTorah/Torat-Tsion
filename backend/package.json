@@ -1,0 +1,16 @@
+{
+  "name": "torat-tsion-backend",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node src/recording-date.test.js",
+    "syntax": "node --check src/server.js"
+  },
+  "dependencies": {
+    "@hebcal/core": "^6.13.0",
+    "express": "^5.1.0",
+    "googleapis": "^176.0.0",
+    "multer": "^2.0.2"
+  }
+}
