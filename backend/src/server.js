@@ -882,7 +882,7 @@ async function buildHomeSummary() {
 
 app.use(express.json({ limit: '32kb' }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxImageBytes } });
-app.get('/auth/google', requireAdmin, (_req, res) => {
+app.get('/auth/google', (_req, res) => {
   try {
     const state = crypto.randomBytes(32).toString('base64url');
     pendingOAuthStates.set(state, { expiresAt: Date.now() + 10 * 60 * 1000 });
@@ -898,7 +898,7 @@ app.get('/auth/google', requireAdmin, (_req, res) => {
     res.status(503).json({ error: 'Google OAuth is not configured' });
   }
 });
-app.get('/auth/google/callback', requireAdmin, async (req, res) => {
+app.get('/auth/google/callback', async (req, res) => {
   const state = String(req.query.state || '');
   const pending = pendingOAuthStates.get(state);
   pendingOAuthStates.delete(state);
