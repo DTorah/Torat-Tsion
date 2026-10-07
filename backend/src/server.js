@@ -888,7 +888,7 @@ app.get('/auth/google', (_req, res) => {
     pendingOAuthStates.set(state, { expiresAt: Date.now() + 10 * 60 * 1000 });
     const authorizationUrl = getOAuthClient().generateAuthUrl({
       access_type: 'offline',
-      prompt: 'select_account',
+      prompt: 'consent select_account',
       scope: [googleOAuthScope],
       state,
     });
