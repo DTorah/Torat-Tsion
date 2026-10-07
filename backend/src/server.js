@@ -937,6 +937,17 @@ app.get('/auth/google/status', requireAdmin, async (_req, res) => {
   }
   res.json(status);
 });
+app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
+  try {
+    const drive = await getDrive();
+    const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType' });
+    const driveAccess = response.data.id === folderId && response.data.mimeType === driveFolderMimeType;
+    res.json({ driveAccess, ...(driveAccess ? {} : { error: 'Configured Drive folder is not accessible.' }) });
+  } catch (error) {
+    console.error('Google OAuth diagnostic failed', safeErrorCode(error));
+    res.status(200).json({ driveAccess: false, error: 'Google Drive access could not be verified.' });
+  }
+});
 app.get('/health', (_req, res) => res.json({
   ok: true,
   contentStorage: githubContentsEnabled ? 'github' : 'filesystem',
