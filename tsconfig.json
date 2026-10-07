@@ -12,9 +12,18 @@
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "backend/node_modules",
+    "dist",
+    ".expo",
+    "darchei-torah-app",
+    "torat-tsion-app",
+    "src/app/api",
+    "src/lib/server"
   ]
 }

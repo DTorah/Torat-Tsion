@@ -147,7 +147,7 @@ export async function assertFolderUnderRoot(folderId: string) {
     const folderResponse: { data: drive_v3.Schema$File } = await drive.files.get({
       fileId: currentId,
       fields: 'id,name,mimeType,parents',
-      supportsAllDrives: false,
+      supportsAllDrives: true,
     });
     if (folderResponse.data.mimeType !== DRIVE_FOLDER_MIME_TYPE) throw new DriveRequestError('folder', 404);
     if (folderResponse.data.parents?.includes(RECORDINGS_FOLDER_ID)) return { id: folderResponse.data.id!, name: folderResponse.data.name!, parentId: RECORDINGS_FOLDER_ID };
@@ -161,7 +161,7 @@ export async function getRecordingFile(fileId: string) {
   const response = await drive.files.get({
     fileId,
     fields: 'id, name, mimeType, size, videoMediaMetadata',
-    supportsAllDrives: false,
+    supportsAllDrives: true,
   });
 
   const file = response.data;
@@ -175,7 +175,7 @@ export async function getRecordingFile(fileId: string) {
 export async function streamRecordingFile(fileId: string, range?: string) {
   const drive = await getDriveClient();
   return drive.files.get(
-    { fileId, alt: 'media', supportsAllDrives: false },
+    { fileId, alt: 'media', supportsAllDrives: true },
     {
       responseType: 'stream',
       headers: range ? { Range: range } : undefined,

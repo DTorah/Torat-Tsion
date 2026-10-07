@@ -41,7 +41,7 @@ const coversDirectory = path.join(dataDirectory, 'covers');
 const mappingPath = path.join(dataDirectory, 'covers.json');
 const contentPath = path.join(dataDirectory, 'content.json');
 const githubContentsToken = process.env.GITHUB_CONTENTS_TOKEN?.trim() || null;
-const githubContentsRepository = process.env.GITHUB_CONTENTS_REPOSITORY?.trim() || 'DTorah/Darchei-Torah';
+const githubContentsRepository = process.env.GITHUB_CONTENTS_REPOSITORY?.trim() || 'DTorah/Torat-Tsion';
 const githubContentsBranch = process.env.GITHUB_CONTENTS_BRANCH?.trim() || 'torat-tsion-content';
 const githubContentsEnabled = Boolean(githubContentsToken);
 const recordingTimeZone = process.env.RECORDING_TIME_ZONE || 'America/New_York';
@@ -363,7 +363,7 @@ async function resolveShortcut(file) {
     const response = await drive.files.get({
       fileId: targetId,
       fields: 'id,name,mimeType,size,createdTime,modifiedTime,videoMediaMetadata',
-      supportsAllDrives: false,
+      supportsAllDrives: true,
     });
     return { ...response.data, name: file.name || response.data.name };
   } catch {
@@ -380,6 +380,8 @@ async function fetchDriveContents(parentId, diagnostics = null) {
       q: `'${parentId}' in parents and trashed = false`,
       fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, videoMediaMetadata, shortcutDetails)',
       orderBy: 'createdTime desc', pageSize: 1000, pageToken, spaces: 'drive',
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     });
     files.push(...(response.data.files || []));
     pageToken = response.data.nextPageToken || undefined;
@@ -512,7 +514,7 @@ function invalidateRecordingDiscovery() {
 async function assertFolderUnderRoot(requestedFolderId) {
   if (requestedFolderId === folderId) return { id: folderId, name: 'Recordings', parentId: null };
   const drive = await getDrive();
-  const initial = await drive.files.get({ fileId: requestedFolderId, fields: 'id,name,mimeType,parents', supportsAllDrives: false });
+  const initial = await drive.files.get({ fileId: requestedFolderId, fields: 'id,name,mimeType,parents', supportsAllDrives: true });
   if (initial.data.mimeType !== driveFolderMimeType) throw new Error('not a recordings folder');
   const requested = { id: initial.data.id, name: initial.data.name, parentId: initial.data.parents?.[0] || null };
   const visited = new Set([requestedFolderId]);
@@ -523,7 +525,7 @@ async function assertFolderUnderRoot(requestedFolderId) {
   while (currentId && !visited.has(currentId)) {
     if (parents?.includes(folderId)) return requested;
     visited.add(currentId);
-    const response = await drive.files.get({ fileId: currentId, fields: 'id,name,mimeType,parents', supportsAllDrives: false });
+    const response = await drive.files.get({ fileId: currentId, fields: 'id,name,mimeType,parents', supportsAllDrives: true });
     if (response.data.mimeType !== driveFolderMimeType) throw new Error('not a recordings folder');
     parents = response.data.parents;
     currentId = parents?.[0];
@@ -707,7 +709,7 @@ async function hydrateRecordingAnalysis(content, file) {
   try {
     await fsp.mkdir(dataDirectory, { recursive: true });
     const drive = await getDrive();
-    const response = await drive.files.get({ fileId: file.id, alt: 'media', supportsAllDrives: false }, { responseType: 'stream' });
+    const response = await drive.files.get({ fileId: file.id, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' });
     await writeStreamToFile(response.data, tempPath);
     const analysis = await detectSpeechStartFromAudioFile(tempPath);
     const next = {
@@ -929,7 +931,7 @@ app.get('/auth/google/status', requireAdmin, async (_req, res) => {
   if (status.clientConfigured && status.refreshTokenConfigured && status.driveFolderConfigured) {
     try {
       const drive = await getDrive();
-      const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType' });
+      const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType', supportsAllDrives: true });
       status.driveAccessible = response.data.id === folderId && response.data.mimeType === driveFolderMimeType;
     } catch (error) {
       console.error('Google OAuth status check failed', safeErrorCode(error));
@@ -940,7 +942,7 @@ app.get('/auth/google/status', requireAdmin, async (_req, res) => {
 app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
   try {
     const drive = await getDrive();
-    const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType' });
+    const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType', supportsAllDrives: true });
     const driveAccess = response.data.id === folderId && response.data.mimeType === driveFolderMimeType;
     res.json({ driveAccess, ...(driveAccess ? {} : { error: 'Configured Drive folder is not accessible.' }) });
   } catch (error) {
@@ -1102,7 +1104,7 @@ async function getRecordingMetadata(drive, recordingId) {
   const response = await drive.files.get({
     fileId: recordingId,
     fields: 'id,name,mimeType,size,videoMediaMetadata',
-    supportsAllDrives: false,
+    supportsAllDrives: true,
   });
   return response.data;
 }
@@ -1116,7 +1118,7 @@ app.get('/api/recordings/:id', async (req, res) => {
     if (!contentType) return res.status(404).json({ error: 'Unable to stream recording' });
 
     const response = await drive.files.get(
-      { fileId: req.params.id, alt: 'media', supportsAllDrives: false },
+      { fileId: req.params.id, alt: 'media', supportsAllDrives: true },
       { responseType: 'stream', headers: range ? { Range: range } : undefined },
     );
     const headers = {
@@ -1150,7 +1152,7 @@ app.get('/api/recordings/:id/download', async (req, res) => {
     const contentType = audioContentType(metadata) || 'application/octet-stream';
     const fileName = (metadata.name || 'torat-tsion-recording').replace(/[\\/]+/g, '_');
     const response = await drive.files.get(
-      { fileId: req.params.id, alt: 'media', supportsAllDrives: false },
+      { fileId: req.params.id, alt: 'media', supportsAllDrives: true },
       { responseType: 'stream' },
     );
 

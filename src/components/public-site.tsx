@@ -440,7 +440,7 @@ export function PublicRecordingList({ title, description, recordings }: { title:
 }
 
 export function PublicDirectory({ title, description, items, kind }: { title: string; description: string; items: Array<Rabbi | Category>; kind: 'rabbi' | 'category' | 'collection' }) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>SHIVTI</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.pageDescription}>{description}</Text>{kind === 'rabbi' ? <View style={styles.rabbiGrid}>{items.map((item) => <RabbiCard key={item.id} rabbi={item as Rabbi} />)}</View> : <View style={styles.categoryGrid}>{items.map((item) => <Link key={item.id} href={(kind === 'category' ? `/categories/${item.id}` : `/collections/${item.id}`) as never} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{item.name}</Text><Text numberOfLines={3} style={styles.categoryDescription}>{item.description || (kind === 'category' ? 'Browse shiurim in this category' : 'Listen to this collection')}</Text></Pressable></Link>)}</View>}</View></ScrollView>;
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>TORAT TSION</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.pageDescription}>{description}</Text>{kind === 'rabbi' ? <View style={styles.rabbiGrid}>{items.map((item) => <RabbiCard key={item.id} rabbi={item as Rabbi} />)}</View> : <View style={styles.categoryGrid}>{items.map((item) => <Link key={item.id} href={(kind === 'category' ? `/categories/${item.id}` : `/collections/${item.id}`) as never} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{item.name}</Text><Text numberOfLines={3} style={styles.categoryDescription}>{item.description || (kind === 'category' ? 'Browse shiurim in this category' : 'Listen to this collection')}</Text></Pressable></Link>)}</View>}</View></ScrollView>;
 }
 
 export function PublicPrivacyPolicy() {
@@ -448,7 +448,7 @@ export function PublicPrivacyPolicy() {
   return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}>
     <PublicHeader query={query} setQuery={setQuery} />
     <View style={styles.privacyHero}>
-      <Text style={styles.pageEyebrow}>SHIVTI</Text>
+      <Text style={styles.pageEyebrow}>TORAT TSION</Text>
       <Text style={styles.pageTitle}>Privacy Policy</Text>
       <Text style={styles.pageDescription}>Last updated: October 1, 2026</Text>
     </View>
@@ -496,7 +496,7 @@ export function PublicPrivacyPolicy() {
 
       <PrivacySection title="Contact">
         <Text style={styles.privacyText}>For privacy questions or requests, use the Torat Tsion project support channel on GitHub.</Text>
-        <Link href="https://github.com/DTorah/Darchei-Torah/issues" asChild><Pressable accessibilityLabel="Contact Torat Tsion privacy support on GitHub" style={styles.privacyContact}><Text style={styles.privacyContactText}>Open Torat Tsion support on GitHub</Text></Pressable></Link>
+        <Link href="https://github.com/DTorah/Torat-Tsion/issues" asChild><Pressable accessibilityLabel="Contact Torat Tsion privacy support on GitHub" style={styles.privacyContact}><Text style={styles.privacyContactText}>Open Torat Tsion support on GitHub</Text></Pressable></Link>
       </PrivacySection>
     </View>
   </View></ScrollView>;
