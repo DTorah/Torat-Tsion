@@ -36,7 +36,6 @@ function writeStreamToFile(stream, filePath) {
 const app = express();
 const port = Number(process.env.PORT || 8080);
 const folderId = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '';
-const localCredentialPath = process.env.TORAT_TSION_SERVICE_ACCOUNT_PATH || path.join(process.cwd(), 'secrets', 'google-service-account.json');
 const dataDirectory = process.env.TORAT_TSION_DATA_DIR || path.join('/tmp', 'torat-tsion-data');
 const coversDirectory = path.join(dataDirectory, 'covers');
 const mappingPath = path.join(dataDirectory, 'covers.json');
@@ -96,6 +95,9 @@ let githubBranchPromise = null;
 const persistentCache = new Map();
 const persistentCacheTtlMs = 30 * 1000;
 let contentMutationTail = Promise.resolve();
+const googleOAuthRedirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'https://torat-tsion-api.onrender.com/auth/google/callback';
+const googleOAuthScope = 'https://www.googleapis.com/auth/drive.readonly';
+const pendingOAuthStates = new Map();
 
 app.use((req, res, next) => {
   const origin = req.get('origin');
@@ -122,6 +124,8 @@ function safeErrorCode(error) {
   if (status === 404) return 'drive_folder_not_found';
   if (status >= 400) return 'drive_api_error';
   if (error?.code === 'drive_folder_not_configured') return 'drive_folder_not_configured';
+  if (error?.code === 'google_oauth_client_not_configured') return 'google_oauth_client_not_configured';
+  if (error?.code === 'google_oauth_refresh_token_not_configured') return 'google_oauth_refresh_token_not_configured';
 
   if (error?.message?.includes('ENOENT')) return 'credential_file_missing';
   if (error?.message?.includes('JSON')) return 'credential_parse_error';
@@ -290,19 +294,36 @@ function requestedContentRange(range, size) {
 }
 
 
-function getCredentials() {
-  const configured = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
-  const raw = configured?.startsWith('{') ? configured : fs.readFileSync(configured || localCredentialPath, 'utf8');
-  const parsed = JSON.parse(raw);
-  if (typeof parsed !== 'object' || parsed === null || typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string' || typeof parsed.project_id !== 'string') {
-    throw new Error('invalid credentials');
+function googleOAuthClientConfigured() {
+  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() && process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim());
+}
+
+function googleOAuthConfigured() {
+  return Boolean(googleOAuthClientConfigured() && process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.trim());
+}
+
+function getOAuthClient() {
+  if (!googleOAuthClientConfigured()) {
+    const error = new Error('Google OAuth client is not configured');
+    error.code = 'google_oauth_client_not_configured';
+    throw error;
   }
-  return { ...parsed, private_key: parsed.private_key.replace(/\\n/g, '\n') };
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_OAUTH_CLIENT_ID.trim(),
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET.trim(),
+    googleOAuthRedirectUri,
+  );
 }
 
 async function getDrive() {
   if (driveClient) return driveClient;
-  const auth = new google.auth.GoogleAuth({ credentials: getCredentials(), scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
+  if (!googleOAuthConfigured()) {
+    const error = new Error('Google OAuth refresh token is not configured');
+    error.code = 'google_oauth_refresh_token_not_configured';
+    throw error;
+  }
+  const auth = getOAuthClient();
+  auth.setCredentials({ refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN.trim() });
   await auth.getAccessToken();
   driveClient = google.drive({ version: 'v3', auth });
   return driveClient;
@@ -583,6 +604,9 @@ function isAdmin(req) {
 }
 function requireAdmin(req, res, next) { if (!isAdmin(req)) return res.status(401).json({ error: 'Admin authentication required' }); next(); }
 function validId(id) { return /^[A-Za-z0-9_-]{10,200}$/.test(id); }
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
 function extension(mime) { return mime === 'image/jpeg' ? 'jpg' : mime.slice(6); }
 function validSignature(buffer, mime) { return mime === 'image/png' ? buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : mime === 'image/jpeg' ? buffer.subarray(0, 3).equals(Buffer.from([255,216,255])) : buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WEBP'; }
 async function readMapping() { const bytes = await readStoredFile('covers.json'); return bytes ? JSON.parse(bytes.toString('utf8')) : {}; }
@@ -858,12 +882,67 @@ async function buildHomeSummary() {
 
 app.use(express.json({ limit: '32kb' }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxImageBytes } });
+app.get('/auth/google', requireAdmin, (_req, res) => {
+  try {
+    const state = crypto.randomBytes(32).toString('base64url');
+    pendingOAuthStates.set(state, { expiresAt: Date.now() + 10 * 60 * 1000 });
+    const authorizationUrl = getOAuthClient().generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: [googleOAuthScope],
+      state,
+    });
+    res.redirect(authorizationUrl);
+  } catch (error) {
+    console.error('Google OAuth start failed', safeErrorCode(error));
+    res.status(503).json({ error: 'Google OAuth is not configured' });
+  }
+});
+app.get('/auth/google/callback', requireAdmin, async (req, res) => {
+  const state = String(req.query.state || '');
+  const pending = pendingOAuthStates.get(state);
+  pendingOAuthStates.delete(state);
+  if (!state || !pending || pending.expiresAt < Date.now()) {
+    return res.status(400).send('Google OAuth authorization expired or is invalid.');
+  }
+  if (req.query.error) return res.status(400).send('Google OAuth authorization was cancelled.');
+  try {
+    const code = String(req.query.code || '');
+    if (!code) return res.status(400).send('Google OAuth did not return an authorization code.');
+    const { tokens } = await getOAuthClient().getToken(code);
+    if (!tokens.refresh_token) {
+      return res.status(400).send('Google did not issue a refresh token. Revoke the existing grant and authorize again.');
+    }
+    res.type('html').send(`<!doctype html><meta charset="utf-8"><title>Torat Tsion Google Drive OAuth</title><style>body{font-family:system-ui;max-width:760px;margin:40px auto;padding:0 20px;color:#123b63}code{display:block;word-break:break-all;background:#f3f7fa;padding:16px;border:1px solid #d9e7ef}strong{color:#9b1c1c}</style><h1>Authorization complete</h1><p>Copy this refresh token into the Render environment variable <code>GOOGLE_OAUTH_REFRESH_TOKEN</code>. This page does not store it.</p><code>${escapeHtml(tokens.refresh_token)}</code><p><strong>Keep this token secret and do not commit it.</strong> Restart the Render service after saving it.</p>`);
+  } catch (error) {
+    console.error('Google OAuth callback failed', safeErrorCode(error));
+    res.status(502).send('Google OAuth could not be completed.');
+  }
+});
+app.get('/auth/google/status', requireAdmin, async (_req, res) => {
+  const status = {
+    clientConfigured: googleOAuthClientConfigured(),
+    refreshTokenConfigured: Boolean(process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.trim()),
+    driveFolderConfigured: Boolean(folderId),
+    driveAccessible: false,
+  };
+  if (status.clientConfigured && status.refreshTokenConfigured && status.driveFolderConfigured) {
+    try {
+      const drive = await getDrive();
+      const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType' });
+      status.driveAccessible = response.data.id === folderId && response.data.mimeType === driveFolderMimeType;
+    } catch (error) {
+      console.error('Google OAuth status check failed', safeErrorCode(error));
+    }
+  }
+  res.json(status);
+});
 app.get('/health', (_req, res) => res.json({
   ok: true,
   contentStorage: githubContentsEnabled ? 'github' : 'filesystem',
   driveConfigured: Boolean(folderId),
   driveFolderFormatValid: validId(folderId),
-  serviceAccountConfigured: Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim() || process.env.TORAT_TSION_SERVICE_ACCOUNT_PATH?.trim()),
+  googleOAuthConfigured: googleOAuthConfigured(),
   adminConfigured: Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET),
   zmanimConfigured: Boolean(process.env.TORAT_TSION_LOCATION?.trim() && process.env.TORAT_TSION_ZMANIM_JSON?.trim()),
 }));

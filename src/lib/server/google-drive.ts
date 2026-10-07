@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { google, type drive_v3 } from 'googleapis';
 
 export const RECORDINGS_FOLDER_ID = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '';
@@ -6,14 +5,10 @@ export const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const AUDIO_FALLBACK_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'mp4', 'oga', 'ogg', 'opus', 'wav', 'webm']);
 const AUDIO_ONLY_VIDEO_MIME_TYPES = new Set(['video/3gpp', 'video/3gpp2', 'video/mp4']);
 
-const SERVICE_ACCOUNT_PATH =
-  process.env.TORAT_TSION_SERVICE_ACCOUNT_PATH ||
-  '/home/codespace/.config/torat-tsion/google-service-account.json';
-
 let driveClient: drive_v3.Drive | undefined;
 
 class DriveConfigurationError extends Error {
-  constructor(public readonly code: 'missing' | 'invalid-json' | 'invalid-shape') {
+  constructor(public readonly code: 'oauth-client-missing' | 'refresh-token-missing') {
     super('Drive configuration is invalid');
   }
 }
@@ -33,25 +28,10 @@ export function recordingsFolderStatus() {
   };
 }
 
-function parseCredentials(value: string) {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
-  } catch {
-    throw new DriveConfigurationError('invalid-json');
-  }
-
-  if (!parsed || typeof parsed !== 'object') throw new DriveConfigurationError('invalid-shape');
-  const credentials = parsed as Record<string, unknown>;
-  if (typeof credentials.client_email !== 'string' || typeof credentials.private_key !== 'string' || typeof credentials.project_id !== 'string') {
-    throw new DriveConfigurationError('invalid-shape');
-  }
-  return { ...credentials, private_key: credentials.private_key.replace(/\\n/g, '\n') };
-}
-
 export function driveConfigurationStatus() {
-  return process.env.GOOGLE_SERVICE_ACCOUNT_JSON ? 'environment' : 'local-file';
+  if (!process.env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) return 'oauth-client-missing';
+  if (!process.env.GOOGLE_OAUTH_REFRESH_TOKEN) return 'refresh-token-missing';
+  return 'configured';
 }
 
 async function getDriveClient() {
@@ -59,17 +39,17 @@ async function getDriveClient() {
     return driveClient;
   }
 
-  const credentialsValue = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
-  const credentialsJson = credentialsValue?.startsWith('{') || credentialsValue?.startsWith('"')
-    ? credentialsValue
-    : credentialsValue
-      ? await readFile(credentialsValue, 'utf8')
-      : await readFile(SERVICE_ACCOUNT_PATH, 'utf8').catch(() => { throw new DriveConfigurationError('missing'); });
-  const credentials = parseCredentials(credentialsJson);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-  });
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.trim();
+  if (!clientId || !clientSecret) throw new DriveConfigurationError('oauth-client-missing');
+  if (!refreshToken) throw new DriveConfigurationError('refresh-token-missing');
+  const auth = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim() || 'https://torat-tsion-api.onrender.com/auth/google/callback',
+  );
+  auth.setCredentials({ refresh_token: refreshToken });
 
   try {
     await auth.getAccessToken();

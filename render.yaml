@@ -1,0 +1,8 @@
+services:
+  - name: torat-tsion-api
+    type: web
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free

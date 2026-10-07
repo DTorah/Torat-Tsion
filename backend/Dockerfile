@@ -1,8 +1,8 @@
 FROM node:22-slim
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY src ./src
+COPY backend/package*.json ./
+RUN npm install
+COPY backend/src ./src
 ENV NODE_ENV=production
-EXPOSE 8080
-CMD ["node", "src/server.js"]
+EXPOSE 10000
+CMD ["npm", "start"]
