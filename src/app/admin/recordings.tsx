@@ -44,6 +44,7 @@ export default function RecordingsAdmin() {
   const [filters, setFilters] = useState({ rabbi: '', category: '', visibility: 'all', featured: 'all', new: 'all' });
   const [editing, setEditing] = useState<Item | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const headers = { Authorization: `Bearer ${session.token}` };
@@ -80,19 +81,43 @@ export default function RecordingsAdmin() {
   };
 
   const saveEditing = async (item: Item) => {
+    if (saving) return;
+    setSaving(true);
     const body = {
-      ...item,
+      title: item.title,
+      description: item.description || '',
+      rabbiId: item.rabbiId || null,
+      categoryId: item.categoryId || null,
+      visible: item.visible !== false,
+      featured: Boolean(item.featured),
+      trending: Boolean(item.trending),
+      new: Boolean(item.new),
+      sortOrder: Number(item.sortOrder || 0),
       shiurStartSeconds: item.shiurStartSeconds === null || item.shiurStartSeconds === undefined ? null : Number(item.shiurStartSeconds),
       shiurStartConfidence: item.shiurStartConfidence === null || item.shiurStartConfidence === undefined ? null : Number(item.shiurStartConfidence),
+      shiurStartSource: item.shiurStartSource || null,
+      shiurSkipEnabled: Boolean(item.shiurSkipEnabled),
     };
-    const response = await fetch(adminApiUrl(`/api/admin/recordings/${item.id}`), {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const payload = await response.json() as { error?: string };
-    setMessage(response.ok ? 'Recording saved' : payload.error || 'Unable to save recording');
-    if (response.ok) { setEditing(null); void load(); }
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch(adminApiUrl(`/api/admin/recordings/${item.id}`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const payload = await response.json() as { error?: string };
+      setMessage(response.ok ? 'Recording saved' : payload.error || 'Unable to save recording');
+      if (response.ok) { setEditing(null); void load(); }
+    } catch (reason) {
+      setMessage(reason instanceof DOMException && reason.name === 'AbortError'
+        ? 'Saving took too long. Please try again.'
+        : 'Unable to save recording. Check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const update = (key: keyof Item, value: string | boolean | number | null) => setEditing((current) => current ? { ...current, [key]: value } : current);
@@ -162,9 +187,9 @@ export default function RecordingsAdmin() {
               value={editing.shiurStartSeconds === null || editing.shiurStartSeconds === undefined ? '' : String(editing.shiurStartSeconds)}
             />
             <View style={styles.buttonRow}>
-              <Pressable onPress={() => { const next = { ...editing, shiurStartSource: 'manual' as const, shiurSkipEnabled: true }; setEditing(next); void saveEditing(next); }} style={styles.primary}><Text style={styles.primaryText}>Accept</Text></Pressable>
+              <Pressable disabled={saving} onPress={() => { const next = { ...editing, shiurStartSource: 'manual' as const, shiurSkipEnabled: true }; setEditing(next); void saveEditing(next); }} style={[styles.primary, saving && styles.disabled]}><Text style={styles.primaryText}>{saving ? 'Saving...' : 'Accept'}</Text></Pressable>
               <Pressable onPress={() => { update('shiurStartSource', 'manual'); update('shiurSkipEnabled', true); }} style={styles.secondary}><Text style={styles.secondaryText}>Edit Timestamp</Text></Pressable>
-              <Pressable onPress={() => { const next = { ...editing, shiurSkipEnabled: false }; setEditing(next); void saveEditing(next); }} style={styles.secondary}><Text style={styles.secondaryText}>Disable Skip</Text></Pressable>
+              <Pressable disabled={saving} onPress={() => { const next = { ...editing, shiurSkipEnabled: false }; setEditing(next); void saveEditing(next); }} style={[styles.secondary, saving && styles.disabled]}><Text style={styles.secondaryText}>Disable Skip</Text></Pressable>
               <Pressable onPress={() => void reAnalyze(editing.id)} style={styles.secondary}><Text style={styles.secondaryText}>{editing.shiurStartSeconds ? 'Re-analyze' : 'Analyze'}</Text></Pressable>
             </View>
           </View>
@@ -174,7 +199,7 @@ export default function RecordingsAdmin() {
           <Toggle label="Trending" value={Boolean(editing.trending)} onChange={(value) => update('trending', value)} />
           <Toggle label="New" value={Boolean(editing.new)} onChange={(value) => update('new', value)} />
 
-          <Pressable onPress={() => void save()} style={styles.primary}><Text style={styles.primaryText}>Save metadata</Text></Pressable>
+          <Pressable disabled={saving} onPress={() => void save()} style={[styles.primary, saving && styles.disabled]}><Text style={styles.primaryText}>{saving ? 'Saving...' : 'Save metadata'}</Text></Pressable>
           <Pressable onPress={() => router.push('/admin/covers')} style={styles.coverLink}><Text style={styles.action}>Open Cover Manager</Text></Pressable>
           <Pressable onPress={() => setEditing(null)}><Text style={styles.cancel}>Cancel</Text></Pressable>
         </View>
@@ -246,4 +271,5 @@ const styles = StyleSheet.create({
   coverLink: { marginTop: 10 },
   cancel: { color: '#F3B5A5', marginTop: 10, textAlign: 'center' },
   message: { color: '#A8E1C5', fontSize: 12, marginTop: 12 },
+  disabled: { opacity: 0.5 },
 });

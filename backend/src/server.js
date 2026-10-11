@@ -98,6 +98,11 @@ let contentMutationTail = Promise.resolve();
 const googleOAuthRedirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'https://torat-tsion-api.onrender.com/auth/google/callback';
 const googleOAuthScope = 'https://www.googleapis.com/auth/drive.readonly';
 const pendingOAuthStates = new Map();
+const youtubeApiKey = process.env.YOUTUBE_API_KEY?.trim() || '';
+const youtubeChannelId = process.env.YOUTUBE_CHANNEL_ID?.trim() || '';
+const youtubePlaylistId = process.env.YOUTUBE_PLAYLIST_ID?.trim() || '';
+const youtubeCache = new Map();
+const youtubeCacheTtlMs = 5 * 60 * 1000;
 
 app.use((req, res, next) => {
   const origin = req.get('origin');
@@ -300,6 +305,90 @@ function googleOAuthClientConfigured() {
 
 function googleOAuthConfigured() {
   return Boolean(googleOAuthClientConfigured() && process.env.GOOGLE_OAUTH_REFRESH_TOKEN?.trim());
+}
+
+function youtubeConfigured() {
+  return Boolean(youtubeApiKey && (youtubeChannelId || youtubePlaylistId));
+}
+
+function youtubeVideoId(value) {
+  return /^[A-Za-z0-9_-]{11}$/.test(String(value || '')) ? String(value) : null;
+}
+
+async function youtubeRequest(resource, params) {
+  const query = new URLSearchParams({ ...params, key: youtubeApiKey });
+  const response = await fetch(`https://www.googleapis.com/youtube/v3/${resource}?${query}`);
+  if (!response.ok) throw new Error(`YouTube API request failed (${response.status})`);
+  return response.json();
+}
+
+async function youtubeVideos(query = '') {
+  if (!youtubeConfigured()) return { configured: false, videos: [] };
+  const cacheKey = query.trim().toLowerCase();
+  const cached = youtubeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  let playlistId = youtubePlaylistId;
+  if (!playlistId) {
+    const channel = await youtubeRequest('channels', {
+      part: 'contentDetails',
+      id: youtubeChannelId,
+      maxResults: '1',
+    });
+    playlistId = channel.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+  }
+  if (!playlistId) return { configured: true, videos: [] };
+
+  const playlist = await youtubeRequest('playlistItems', {
+    part: 'snippet,contentDetails',
+    playlistId,
+    maxResults: '24',
+  });
+  let items = (playlist.items || []).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
+  if (query.trim() && youtubeChannelId) {
+    const search = await youtubeRequest('search', {
+      part: 'snippet',
+      channelId: youtubeChannelId,
+      q: query.trim(),
+      type: 'video',
+      maxResults: '24',
+      order: 'relevance',
+    });
+    items = (search.items || []).map((item) => ({
+      snippet: item.snippet,
+      contentDetails: { videoId: item.id?.videoId },
+    })).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
+  } else if (query.trim()) {
+    const normalizedQuery = query.trim().toLowerCase();
+    items = items.filter((item) => `${item.snippet?.title || ''} ${item.snippet?.description || ''}`.toLowerCase().includes(normalizedQuery));
+  }
+
+  const ids = [...new Set(items.map((item) => item.contentDetails.videoId))];
+  const details = ids.length ? await youtubeRequest('videos', {
+    part: 'snippet,contentDetails',
+    id: ids.join(','),
+    maxResults: '50',
+  }) : { items: [] };
+  const detailById = new Map((details.items || []).map((item) => [item.id, item]));
+  const videos = items.map((item) => {
+    const id = item.contentDetails.videoId;
+    const detail = detailById.get(id);
+    const snippet = detail?.snippet || item.snippet || {};
+    return {
+      id,
+      title: String(snippet.title || 'YouTube class'),
+      description: String(snippet.description || ''),
+      publishedAt: snippet.publishedAt || null,
+      channelTitle: String(snippet.channelTitle || 'Ahavat Shalom'),
+      thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
+      watchUrl: `https://www.youtube.com/watch?v=${id}`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
+      source: 'YouTube',
+    };
+  });
+  const value = { configured: true, videos };
+  youtubeCache.set(cacheKey, { expiresAt: Date.now() + youtubeCacheTtlMs, value });
+  return value;
 }
 
 function getOAuthClient() {
@@ -956,9 +1045,31 @@ app.get('/health', (_req, res) => res.json({
   driveConfigured: Boolean(folderId),
   driveFolderFormatValid: validId(folderId),
   googleOAuthConfigured: googleOAuthConfigured(),
+  youtubeConfigured: youtubeConfigured(),
   adminConfigured: Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET),
   zmanimConfigured: Boolean(process.env.TORAT_TSION_LOCATION?.trim() && process.env.TORAT_TSION_ZMANIM_JSON?.trim()),
 }));
+app.get('/api/videos', async (req, res) => {
+  try {
+    res.json(await youtubeVideos(String(req.query.q || '')));
+  } catch (error) {
+    console.error('YouTube videos failed', safeErrorCode(error));
+    res.status(502).json({ configured: youtubeConfigured(), videos: [], error: 'Video service is temporarily unavailable.' });
+  }
+});
+app.get('/api/videos/:videoId', async (req, res) => {
+  const id = youtubeVideoId(req.params.videoId);
+  if (!id) return res.status(400).json({ error: 'Invalid video ID' });
+  try {
+    const result = await youtubeVideos();
+    const video = result.videos.find((item) => item.id === id);
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    res.json({ video });
+  } catch (error) {
+    console.error('YouTube video failed', safeErrorCode(error));
+    res.status(502).json({ error: 'Video service is temporarily unavailable.' });
+  }
+});
 app.get('/api/parsha', async (_req, res) => {
   try {
     await initializeRecordingCalendar();
@@ -1007,7 +1118,17 @@ app.get('/api/time-frame', async (req, res) => { const targetMinutes = Number(re
 app.get('/api/collections', async (_req, res) => { try { const content = await readContent(); res.json({ collections: content.collections.filter((item) => isActive(item)).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)) }); } catch { res.status(500).json({ error: 'Unable to load collections' }); } });
 app.get('/api/collections/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const collection = content.collections.find((item) => item.id === req.params.id && isActive(item)); if (!collection) return res.status(404).json({ error: 'Collection not found' }); const home = buildHome(content, files, covers); res.json({ collection, recordings: (collection.recordingIds || []).map((id) => home._recordingIndex[id]).filter(Boolean) }); } catch { res.status(500).json({ error: 'Unable to load collection' }); } });
 app.get('/api/recording-details/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const home = buildHome(content, files, covers); const recording = home._recordingIndex[req.params.id]; if (!recording) return res.status(404).json({ error: 'Recording not found' }); const related = home.recordings.filter((item) => item.id !== recording.id && ((item.rabbiId && item.rabbiId === recording.rabbiId) || (item.categoryId && item.categoryId === recording.categoryId))).slice(0, 8); res.json({ recording, related }); } catch { res.status(500).json({ error: 'Unable to load recording details' }); } });
-app.get('/api/search', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const query = String(req.query.q || '').trim().toLowerCase(); const home = buildHome(content, files, covers); const results = home.recordings.filter((recording) => !query || [recording.title, recording.description, recording.category, recording.rabbiName, recording.name, recording.recordedAt, recording.recordedDateLabel].some((value) => String(value || '').toLowerCase().includes(query))); res.json({ results }); } catch { res.status(500).json({ error: 'Unable to search recordings' }); } });
+app.get('/api/search', async (req, res) => {
+  try {
+    const [content, files, covers, videos] = await Promise.all([readContent(), listRecordings(), readMapping(), youtubeVideos(String(req.query.q || ''))]);
+    const query = String(req.query.q || '').trim().toLowerCase();
+    const home = buildHome(content, files, covers);
+    const results = home.recordings.filter((recording) => !query || [recording.title, recording.description, recording.category, recording.rabbiName, recording.name, recording.recordedAt, recording.recordedDateLabel].some((value) => String(value || '').toLowerCase().includes(query)));
+    res.json({ results, videos: videos.videos });
+  } catch {
+    res.status(500).json({ error: 'Unable to search recordings' });
+  }
+});
 app.post('/api/recordings/:id/play', async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const content = await readContent(); const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, playCount: Number(current.playCount || 0) + 1 }; await writeContent(content); res.json({ playCount: content.recordings[req.params.id].playCount }); } catch { res.status(500).json({ error: 'Unable to record play' }); } });
 app.put('/api/admin/content', requireAdmin, async (req, res) => { if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Content object is required' }); try { const current = await readContent(); const next = { ...current, ...req.body, settings: { ...current.settings, ...(req.body.settings || {}) } }; await writeContent(next); res.json({ content: next }); } catch { res.status(500).json({ error: 'Unable to save content' }); } });
 app.get('/api/admin/content', requireAdmin, async (_req, res) => { try { res.json({ content: await readContent() }); } catch { res.status(500).json({ error: 'Unable to load content' }); } });
@@ -1099,7 +1220,7 @@ app.delete('/api/admin/carousel/:id', requireAdmin, async (req, res) => { try { 
 app.post('/api/admin/categories', requireAdmin, async (req, res) => { const name = String(req.body?.name || '').trim(); if (!name) return res.status(400).json({ error: 'Category name is required' }); try { const content = await readContent(); const category = { id: newContentId('category'), name: name.slice(0, 100), description: String(req.body.description || '').slice(0, 500), folderIds: [], enabled: req.body.enabled !== false, sortOrder: Number(req.body.sortOrder || content.categories.length), createdAt: new Date().toISOString() }; content.categories.push(category); await writeContent(content); res.status(201).json({ category: publicCategory(category) }); } catch { res.status(500).json({ error: 'Unable to create category' }); } });
 app.patch('/api/admin/categories/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const category = findEntity(content.categories, req.params.id); if (!category) return res.status(404).json({ error: 'Category not found' }); const requestedFolderIds = req.body.folderIds === undefined ? category.folderIds : (Array.isArray(req.body.folderIds) ? [...new Set(req.body.folderIds.filter(validId))] : []); Object.assign(category, { ...req.body, name: req.body.name === undefined ? category.name : String(req.body.name).trim().slice(0, 100), folderIds: requestedFolderIds, sortOrder: req.body.sortOrder === undefined ? category.sortOrder : Number(req.body.sortOrder), enabled: req.body.enabled === undefined ? category.enabled : Boolean(req.body.enabled), updatedAt: new Date().toISOString() }); if (!category.name) return res.status(400).json({ error: 'Category name is required' }); await writeContent(content); res.json({ category: publicCategory(category) }); } catch { res.status(500).json({ error: 'Unable to update category' }); } });
 app.delete('/api/admin/categories/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const previousLength = content.categories.length; content.categories = content.categories.filter((category) => category.id !== req.params.id); if (content.categories.length === previousLength) return res.status(404).json({ error: 'Category not found' }); Object.values(content.recordings).forEach((recording) => { if (recording.categoryId === req.params.id) delete recording.categoryId; }); await writeContent(content); res.json({ deleted: true }); } catch { res.status(500).json({ error: 'Unable to delete category' }); } });
-app.patch('/api/admin/recordings/:id', requireAdmin, async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const content = await readContent(); const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, ...req.body, title: req.body.title === undefined ? current.title : displayRecordingTitle(req.body.title, '', recordingTimeZone), updatedAt: new Date().toISOString() }; await writeContent(content); res.json({ recording: content.recordings[req.params.id] }); } catch { res.status(500).json({ error: 'Unable to save recording metadata' }); } });
+app.patch('/api/admin/recordings/:id', requireAdmin, async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const recording = await mutateContent((content) => { const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, ...req.body, title: req.body.title === undefined ? current.title : displayRecordingTitle(req.body.title, '', recordingTimeZone), updatedAt: new Date().toISOString() }; return content.recordings[req.params.id]; }); res.json({ recording }); } catch (error) { console.error('recording metadata save failed', error.code || error.message); res.status(500).json({ error: 'Unable to save recording metadata' }); } });
 async function getRecordingMetadata(drive, recordingId) {
   const response = await drive.files.get({
     fileId: recordingId,

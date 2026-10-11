@@ -9,6 +9,9 @@ Copy `backend/.env.example` to a server-side environment configuration. Do not c
 - `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`: server-only OAuth web-client credentials.
 - `GOOGLE_OAUTH_REFRESH_TOKEN`: server-only offline OAuth refresh token. Never expose or commit it.
 - `GOOGLE_OAUTH_REDIRECT_URI`: `https://torat-tsion-api.onrender.com/auth/google/callback`; this must exactly match the Google Cloud OAuth client configuration.
+- `YOUTUBE_API_KEY`: optional server-only YouTube Data API v3 key. Restrict it to YouTube Data API v3 in Google Cloud.
+- `YOUTUBE_CHANNEL_ID`: optional Ahavat Shalom/Rabbi Bakhshi channel ID. Use the verified channel ID, not an invented handle.
+- `YOUTUBE_PLAYLIST_ID`: optional playlist ID; when set, it is used instead of the channel uploads playlist.
 - `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8` (the Torat Tsion root folder).
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`: server-only admin settings. Use a random session secret of at least 32 bytes.
 - `GITHUB_CONTENTS_TOKEN`: server-only fine-grained GitHub token with **Contents: Read and write** access to `GITHUB_CONTENTS_REPOSITORY`. When configured, it stores CMS content and uploaded covers on the `GITHUB_CONTENTS_BRANCH` branch.
@@ -34,6 +37,8 @@ The web Home page requests `/api/home?summary=1` first: this reads root folders 
 5. Sign in again and open `/auth/google/status` to confirm configuration and Drive-folder access. The endpoint returns only booleans.
 
 The backend keeps the OAuth flow and refresh token server-side. It requests only `https://www.googleapis.com/auth/drive.readonly`; it does not use service-account credentials.
+
+YouTube integration uses the official Data API only when the optional variables are configured. Video playback uses YouTube's official privacy-enhanced embed URL and does not download or re-host YouTube content. Kol Halashon has no verified public API/embed contract in this project, so its classes remain external links until official integration details are supplied.
 
 ## Local run
 
