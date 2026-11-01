@@ -318,6 +318,14 @@ function youtubeConfigured() {
   return Boolean(youtubeApiKey);
 }
 
+function youtubeEnvironmentStatus() {
+  const rawValue = process.env.YOUTUBE_API_KEY;
+  return {
+    variablePresent: Object.prototype.hasOwnProperty.call(process.env, 'YOUTUBE_API_KEY'),
+    nonEmpty: typeof rawValue === 'string' && rawValue.trim().length > 0,
+  };
+}
+
 function youtubeVideoId(value) {
   return /^[A-Za-z0-9_-]{11}$/.test(String(value || '')) ? String(value) : null;
 }
@@ -1131,6 +1139,7 @@ app.get('/health', (_req, res) => res.json({
   driveFolderFormatValid: validId(folderId),
   googleOAuthConfigured: googleOAuthConfigured(),
   youtubeConfigured: youtubeConfigured(),
+  youtubeEnvironment: youtubeEnvironmentStatus(),
   adminConfigured: Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET),
   zmanimConfigured: Boolean(process.env.TORAT_TSION_LOCATION?.trim() && process.env.TORAT_TSION_ZMANIM_JSON?.trim()),
 }));
