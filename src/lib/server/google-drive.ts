@@ -1,6 +1,6 @@
 import { google, type drive_v3 } from 'googleapis';
 
-export const RECORDINGS_FOLDER_ID = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '';
+export const RECORDINGS_FOLDER_ID = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b';
 export const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const AUDIO_FALLBACK_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'mp4', 'oga', 'ogg', 'opus', 'wav', 'webm']);
 const AUDIO_ONLY_VIDEO_MIME_TYPES = new Set(['video/3gpp', 'video/3gpp2', 'video/mp4']);

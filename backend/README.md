@@ -12,7 +12,7 @@ Copy `backend/.env.example` to a server-side environment configuration. Do not c
 - `YOUTUBE_API_KEY`: optional server-only YouTube Data API v3 key. Restrict it to YouTube Data API v3 in Google Cloud.
 - `YOUTUBE_CHANNEL_ID`: optional Ahavat Shalom/Rabbi Bakhshi channel ID. Use the verified channel ID, not an invented handle.
 - `YOUTUBE_PLAYLIST_ID`: optional playlist ID; when set, it is used instead of the channel uploads playlist.
-- `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8` (the Torat Tsion root folder).
+- `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b` (the Torat Tsion root folder).
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`: server-only admin settings. Use a random session secret of at least 32 bytes.
 - `GITHUB_CONTENTS_TOKEN`: server-only fine-grained GitHub token with **Contents: Read and write** access to `GITHUB_CONTENTS_REPOSITORY`. When configured, it stores CMS content and uploaded covers on the `GITHUB_CONTENTS_BRANCH` branch.
 - `GITHUB_CONTENTS_REPOSITORY`: separate repository for durable Torat Tsion CMS content.
@@ -32,11 +32,20 @@ The web Home page requests `/api/home?summary=1` first: this reads root folders 
 
 1. In Google Cloud, create or select a **Web application** OAuth client and add `https://torat-tsion-api.onrender.com/auth/google/callback` as an authorized redirect URI.
 2. Configure `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, the admin variables, and `TORAT_TSION_DRIVE_FOLDER_ID` in Render.
-3. After the service is running, sign in as an admin and open `https://torat-tsion-api.onrender.com/auth/google`. Approve the read-only Drive scope.
+3. After the service is running, sign in as an admin and open `https://torat-tsion-api.onrender.com/auth/google`. Approve the Google Drive access scope.
 4. Copy the one-time refresh token shown by the callback page into Render as `GOOGLE_OAUTH_REFRESH_TOKEN`, then restart the service.
 5. Sign in again and open `/auth/google/status` to confirm configuration and Drive-folder access. The endpoint returns only booleans.
 
-The backend keeps the OAuth flow and refresh token server-side. It requests only `https://www.googleapis.com/auth/drive.readonly`; it does not use service-account credentials.
+The backend keeps the OAuth flow and refresh token server-side. It requests `https://www.googleapis.com/auth/drive`: the existing single refresh token must both manage folder metadata and read private audio media for streaming. A narrower metadata-only grant would break the existing streaming path. It does not use service-account credentials.
+
+Because the required scope is changing from the previous read-only grant, the existing refresh token must be reauthorized before folder creation, renaming, or moving will work:
+
+1. Open `/auth/google` while signed in as an Admin.
+2. Approve the Google Drive access permission.
+3. Replace `GOOGLE_OAUTH_REFRESH_TOKEN` in the server environment with the newly issued refresh token.
+4. Restart the backend and verify `/auth/google/status`.
+
+Existing folder IDs, recording IDs, and Drive files are not recreated or migrated. If Google rejects a mutation because the account lacks access to a folder, the Admin API reports an authorization error and does not modify CMS content.
 
 YouTube integration uses the official Data API only when the optional variables are configured. Video playback uses YouTube's official privacy-enhanced embed URL and does not download or re-host YouTube content. Kol Halashon has no verified public API/embed contract in this project, so its classes remain external links until official integration details are supplied.
 

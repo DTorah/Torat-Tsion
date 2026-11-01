@@ -198,7 +198,7 @@ function formatMinutesLabel(value: number) {
   return `${hours === 1 ? '1 hr' : `${hours} hr`} ${remainder} min`;
 }
 
-function TimeFrameBuilder({ recordings }: { recordings: Recording[] }) {
+export function TimeFrameBuilder({ recordings, categoryId, categoryName }: { recordings: Recording[]; categoryId?: string; categoryName?: string }) {
   const [minutes, setMinutes] = useState(35);
   const [results, setResults] = useState<Recording[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -208,7 +208,8 @@ function TimeFrameBuilder({ recordings }: { recordings: Recording[] }) {
     setIsSearching(true);
     setSearchMessage(null);
     try {
-      const response = await fetch(apiUrl(`/api/time-frame?minutes=${minutes}`));
+      const scope = categoryId ? `&categoryId=${encodeURIComponent(categoryId)}` : '';
+      const response = await fetch(apiUrl(`/api/time-frame?minutes=${minutes}${scope}`));
       const payload = await response.json() as { recordings?: Recording[]; durationPendingCount?: number; error?: string };
       if (!response.ok) throw new Error(payload.error || 'Unable to find recordings for this time frame');
       const matches = payload.recordings || [];
@@ -229,7 +230,7 @@ function TimeFrameBuilder({ recordings }: { recordings: Recording[] }) {
   return (
     <View style={styles.sessionCard}>
       <Text style={styles.sessionEyebrow}>TIME FRAME</Text>
-      <Text style={styles.sessionTitle}>Build My Listening Session</Text>
+      <Text style={styles.sessionTitle}>{categoryName ? `Find a ${categoryName} listening session` : 'Build My Listening Session'}</Text>
       <Text style={styles.sessionDescription}>{formatMinutesLabel(minutes)} available</Text>
       <RangeSlider
         value={minutes}
@@ -435,8 +436,8 @@ export function PublicHome() {
   </View></ScrollView>;
 }
 
-export function PublicRecordingList({ title, description, recordings }: { title: string; description?: string; recordings: Recording[] }) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>Torat Tsion</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
+export function PublicRecordingList({ title, description, recordings, timeFrameCategoryId }: { title: string; description?: string; recordings: Recording[]; timeFrameCategoryId?: string }) {
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>Torat Tsion</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<TimeFrameBuilder categoryId={timeFrameCategoryId} categoryName={timeFrameCategoryId ? title : undefined} recordings={recordings} /><View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
 }
 
 export function PublicDirectory({ title, description, items, kind }: { title: string; description: string; items: Array<Rabbi | Category>; kind: 'rabbi' | 'category' | 'collection' }) {

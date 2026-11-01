@@ -1,5 +1,5 @@
-export const donationUrl = 'https://www.paypal.com/donate/?cmd=_s-xclick&hosted_button_id=P6K22J4WSLKTS&ssrt=1791170531384';
+export const donationUrl = 'https://www.torahhelp.com/';
 export const torahHelpUrl = 'https://www.torahhelp.com/';
-export const ahavatShalomYouTubeUrl = 'https://www.youtube.com/@AhavatShalom';
+export const ahavatShalomYouTubeUrl = 'https://www.youtube.com/user/rabbibakhshi/featured';
 export const kolHalashonUrl = 'https://www.kolhalashon.com/';
 export const siteName = 'Torat Tsion';

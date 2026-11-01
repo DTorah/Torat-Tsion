@@ -35,7 +35,7 @@ function writeStreamToFile(stream, filePath) {
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
-const folderId = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '';
+const folderId = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b';
 const dataDirectory = process.env.TORAT_TSION_DATA_DIR || path.join('/tmp', 'torat-tsion-data');
 const coversDirectory = path.join(dataDirectory, 'covers');
 const mappingPath = path.join(dataDirectory, 'covers.json');
@@ -96,7 +96,10 @@ const persistentCache = new Map();
 const persistentCacheTtlMs = 30 * 1000;
 let contentMutationTail = Promise.resolve();
 const googleOAuthRedirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'https://torat-tsion-api.onrender.com/auth/google/callback';
-const googleOAuthScope = 'https://www.googleapis.com/auth/drive.readonly';
+// The existing single refresh token is also used for private audio streaming.
+// Full Drive scope is therefore required to add folder mutations without
+// revoking the token's ability to read media content.
+const googleOAuthScope = 'https://www.googleapis.com/auth/drive';
 const pendingOAuthStates = new Map();
 const youtubeApiKey = process.env.YOUTUBE_API_KEY?.trim() || '';
 const youtubeChannelId = process.env.YOUTUBE_CHANNEL_ID?.trim() || '';
@@ -625,6 +628,39 @@ async function assertFolderUnderRoot(requestedFolderId) {
   throw error;
 }
 
+async function folderAncestry(requestedFolderId) {
+  const drive = await getDrive();
+  const ancestry = [];
+  const visited = new Set();
+  let currentId = requestedFolderId;
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    const response = await drive.files.get({
+      fileId: currentId,
+      fields: 'id,name,mimeType,parents',
+      supportsAllDrives: true,
+    });
+    const folder = response.data;
+    if (folder.mimeType !== driveFolderMimeType || !folder.id) throw new Error('not a recordings folder');
+    ancestry.push({ id: folder.id, name: folder.name || folder.id, parentId: folder.parents?.[0] || null });
+    currentId = folder.parents?.[0];
+  }
+  return ancestry;
+}
+
+async function listDriveFolderTree(parentId = folderId, visited = new Set()) {
+  if (visited.has(parentId)) return [];
+  visited.add(parentId);
+  const contents = await listDriveContents(parentId);
+  const children = await Promise.all(contents.folders.map(async (folder) => ({
+    id: folder.id,
+    name: folder.name,
+    parentId,
+    children: await listDriveFolderTree(folder.id, visited),
+  })));
+  return children.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function publicFolder(folder, parentId) {
   return { id: folder.id, name: folder.name, parentId };
 }
@@ -847,7 +883,12 @@ function recordingMetadata(content, file) {
 function buildHome(content, files, covers, folders = []) {
   const rabbis = mergeRabbis(content, folders).filter((rabbi) => rabbi.enabled !== false);
   const rabbiById = new Map(rabbis.map((rabbi) => [rabbi.id, rabbi]));
-  const categoryByFolderId = new Map(content.categories.flatMap((category) => (Array.isArray(category.folderIds) ? category.folderIds : []).map((folderId) => [folderId, category])));
+  const categoryByFolderId = new Map();
+  for (const category of content.categories) {
+    for (const folderId of Array.isArray(category.folderIds) ? category.folderIds : []) {
+      if (!categoryByFolderId.has(folderId)) categoryByFolderId.set(folderId, category);
+    }
+  }
   const recordings = files.map((file) => {
     const saved = content.recordings[file.id] || {};
     const folderContext = file._folderContext || null;
@@ -859,9 +900,12 @@ function buildHome(content, files, covers, folders = []) {
       || (inferredRabbi ? rabbiById.get(inferredRabbi.id) : null)
       || (folders.length === 1 ? folders[0] : null)
       || folderContext;
+    const folderIds = [...(Array.isArray(file._folderPath) ? file._folderPath.map((folder) => folder.id) : []), folderContext?.id]
+      .filter(Boolean)
+      .reverse();
     const matchedCategory = saved.categoryId
       ? content.categories.find((category) => category.id === saved.categoryId)
-      : [folderContext?.id, ...(Array.isArray(file._folderPath) ? file._folderPath.map((folder) => folder.id) : [])]
+      : folderIds
         .map((folderId) => categoryByFolderId.get(folderId))
         .find(Boolean);
     return {
@@ -1114,7 +1158,27 @@ app.get('/api/home', async (req, res) => { try { if (req.query.summary === '1') 
 app.get('/api/categories', async (_req, res) => { try { const content = await readContent(); res.json({ categories: content.categories.filter((category) => category.enabled !== false).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map(publicCategory) }); } catch { res.status(500).json({ error: 'Unable to load categories' }); } });
 app.get('/api/rabbis', async (_req, res) => { try { const [content, contents] = await Promise.all([readContent(), listDriveContents(folderId)]); res.json({ rabbis: mergeRabbis(content, contents.folders).filter((rabbi) => rabbi.enabled !== false).sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.name.localeCompare(b.name)).map(publicRabbi) }); } catch { res.status(500).json({ error: 'Unable to load rabbis' }); } });
 app.get('/api/rabbis/:id', async (req, res) => { try { const [content, covers, discovery] = await Promise.all([readContent(), readMapping(), getRecordingDiscovery()]); const rabbis = mergeRabbis(content, discovery.rootContents.folders); const rabbi = rabbis.find((item) => item.id === req.params.id || item.name === req.params.id) || findEntity(content.rabbis, req.params.id); if (!rabbi || rabbi.enabled === false) return res.status(404).json({ error: 'Rabbi not found' }); const files = discovery.entries.filter((entry) => entry.folder?.id === rabbi.id).map(({ file, folder, folderPath }) => ({ ...file, _folderContext: folder, _folderPath: folderPath })); const home = buildHome(content, files, covers, discovery.rootContents.folders); res.json({ rabbi: publicRabbi(rabbi), recordings: home.recordings.filter((recording) => recording.rabbiId === rabbi.id || (!recording.rabbiId && recording.rabbiName === rabbi.name)).sort(newestRecordingFirst)}); } catch { res.status(500).json({ error: 'Unable to load Rabbi profile' }); } });
-app.get('/api/time-frame', async (req, res) => { const targetMinutes = Number(req.query.minutes); const requestedDate = String(req.query.date || '').trim(); if (!Number.isInteger(targetMinutes) || targetMinutes < 5 || targetMinutes > 120) return res.status(400).json({ error: 'Minutes must be an integer between 5 and 120' }); if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) return res.status(400).json({ error: 'Date must use YYYY-MM-DD' }); try { const [content, covers, discovery] = await Promise.all([readContent(), readMapping(), getRecordingDiscovery()]); const files = discovery.entries.map(({ file, folder, folderPath }) => ({ ...file, _folderContext: folder, _folderPath: folderPath })); const allRecordings = buildHome(content, files, covers, discovery.rootContents.folders).recordings; const dateRecordings = requestedDate ? allRecordings.filter((recording) => recording.recordingDate === requestedDate) : allRecordings; const durationPendingCount = dateRecordings.filter((recording) => !Number.isFinite(Number(recording.durationSeconds)) || Number(recording.durationSeconds) <= 0).length; const recordings = findTimeFrameRecordings(dateRecordings, targetMinutes); res.json({ targetMinutes, requestedDate: requestedDate || null, toleranceMinutes: timeFrameToleranceMinutes(targetMinutes), recordings, scannedRecordingCount: dateRecordings.length, durationPendingCount, complete: durationPendingCount === 0 }); } catch (error) { console.error('time frame failed', safeErrorCode(error)); res.status(500).json({ error: 'Unable to find recordings for this time frame' }); } });
+app.get('/api/time-frame', async (req, res) => {
+  const targetMinutes = Number(req.query.minutes);
+  const requestedDate = String(req.query.date || '').trim();
+  const requestedCategoryId = String(req.query.categoryId || '').trim();
+  if (!Number.isInteger(targetMinutes) || targetMinutes < 5 || targetMinutes > 120) return res.status(400).json({ error: 'Minutes must be an integer between 5 and 120' });
+  if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) return res.status(400).json({ error: 'Date must use YYYY-MM-DD' });
+  if (requestedCategoryId && requestedCategoryId.length > 200) return res.status(400).json({ error: 'Invalid category ID' });
+  try {
+    const [content, covers, discovery] = await Promise.all([readContent(), readMapping(), getRecordingDiscovery()]);
+    const files = discovery.entries.map(({ file, folder, folderPath }) => ({ ...file, _folderContext: folder, _folderPath: folderPath }));
+    const allRecordings = buildHome(content, files, covers, discovery.rootContents.folders).recordings;
+    const scopedRecordings = requestedCategoryId ? allRecordings.filter((recording) => recording.categoryId === requestedCategoryId) : allRecordings;
+    const dateRecordings = requestedDate ? scopedRecordings.filter((recording) => recording.recordingDate === requestedDate) : scopedRecordings;
+    const durationPendingCount = dateRecordings.filter((recording) => !Number.isFinite(Number(recording.durationSeconds)) || Number(recording.durationSeconds) <= 0).length;
+    const recordings = findTimeFrameRecordings(dateRecordings, targetMinutes);
+    res.json({ targetMinutes, categoryId: requestedCategoryId || null, requestedDate: requestedDate || null, toleranceMinutes: timeFrameToleranceMinutes(targetMinutes), recordings, scannedRecordingCount: dateRecordings.length, durationPendingCount, complete: durationPendingCount === 0 });
+  } catch (error) {
+    console.error('time frame failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to find recordings for this time frame' });
+  }
+});
 app.get('/api/collections', async (_req, res) => { try { const content = await readContent(); res.json({ collections: content.collections.filter((item) => isActive(item)).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)) }); } catch { res.status(500).json({ error: 'Unable to load collections' }); } });
 app.get('/api/collections/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const collection = content.collections.find((item) => item.id === req.params.id && isActive(item)); if (!collection) return res.status(404).json({ error: 'Collection not found' }); const home = buildHome(content, files, covers); res.json({ collection, recordings: (collection.recordingIds || []).map((id) => home._recordingIndex[id]).filter(Boolean) }); } catch { res.status(500).json({ error: 'Unable to load collection' }); } });
 app.get('/api/recording-details/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const home = buildHome(content, files, covers); const recording = home._recordingIndex[req.params.id]; if (!recording) return res.status(404).json({ error: 'Recording not found' }); const related = home.recordings.filter((item) => item.id !== recording.id && ((item.rabbiId && item.rabbiId === recording.rabbiId) || (item.categoryId && item.categoryId === recording.categoryId))).slice(0, 8); res.json({ recording, related }); } catch { res.status(500).json({ error: 'Unable to load recording details' }); } });
@@ -1132,9 +1196,77 @@ app.get('/api/search', async (req, res) => {
 app.post('/api/recordings/:id/play', async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const content = await readContent(); const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, playCount: Number(current.playCount || 0) + 1 }; await writeContent(content); res.json({ playCount: content.recordings[req.params.id].playCount }); } catch { res.status(500).json({ error: 'Unable to record play' }); } });
 app.put('/api/admin/content', requireAdmin, async (req, res) => { if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Content object is required' }); try { const current = await readContent(); const next = { ...current, ...req.body, settings: { ...current.settings, ...(req.body.settings || {}) } }; await writeContent(next); res.json({ content: next }); } catch { res.status(500).json({ error: 'Unable to save content' }); } });
 app.get('/api/admin/content', requireAdmin, async (_req, res) => { try { res.json({ content: await readContent() }); } catch { res.status(500).json({ error: 'Unable to load content' }); } });
+app.get('/api/admin/drive/folders', requireAdmin, async (_req, res) => {
+  try {
+    assertDriveConfigured();
+    const folders = await listDriveFolderTree();
+    res.json({ root: { id: folderId, name: 'Recordings', parentId: null, children: folders } });
+  } catch (error) {
+    console.error('admin Drive folder load failed', safeErrorCode(error));
+    res.status(safeErrorCode(error) === 'drive_authorization' ? 403 : 500).json({ error: 'Unable to load Google Drive folders', code: safeErrorCode(error) });
+  }
+});
+app.post('/api/admin/drive/folders', requireAdmin, async (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const parentId = String(req.body?.parentId || folderId).trim();
+  if (!name) return res.status(400).json({ error: 'Folder name is required' });
+  if (!validId(parentId)) return res.status(400).json({ error: 'Invalid parent folder ID' });
+  try {
+    assertDriveConfigured();
+    await assertFolderUnderRoot(parentId);
+    const drive = await getDrive();
+    const response = await drive.files.create({
+      requestBody: { name: name.slice(0, 160), mimeType: driveFolderMimeType, parents: [parentId] },
+      fields: 'id,name,mimeType,parents',
+      supportsAllDrives: true,
+    });
+    invalidateRecordingDiscovery();
+    driveContentsCache.clear();
+    res.status(201).json({ folder: publicFolder(response.data, parentId) });
+  } catch (error) {
+    console.error('admin Drive folder create failed', safeErrorCode(error));
+    const code = safeErrorCode(error);
+    res.status(code === 'drive_authorization' ? 403 : code === 'drive_folder_not_found' ? 404 : 500).json({ error: 'Unable to create Google Drive folder', code });
+  }
+});
+app.patch('/api/admin/drive/folders/:id', requireAdmin, async (req, res) => {
+  const folderIdToUpdate = String(req.params.id || '').trim();
+  const requestedParentId = req.body?.parentId === undefined ? null : String(req.body.parentId || '').trim();
+  const requestedName = req.body?.name === undefined ? null : String(req.body.name || '').trim();
+  if (!validId(folderIdToUpdate)) return res.status(400).json({ error: 'Invalid folder ID' });
+  if (requestedParentId !== null && !validId(requestedParentId)) return res.status(400).json({ error: 'Invalid parent folder ID' });
+  if (requestedName !== null && !requestedName) return res.status(400).json({ error: 'Folder name is required' });
+  try {
+    assertDriveConfigured();
+    const current = await assertFolderUnderRoot(folderIdToUpdate);
+    if (folderIdToUpdate === folderId) return res.status(400).json({ error: 'The recordings root folder cannot be changed' });
+    const drive = await getDrive();
+    const update = { fields: 'id,name,mimeType,parents', supportsAllDrives: true };
+    const requestBody = {};
+    if (requestedName !== null) requestBody.name = requestedName.slice(0, 160);
+    if (requestedParentId !== null && requestedParentId !== current.parentId) {
+      await assertFolderUnderRoot(requestedParentId);
+      const targetAncestry = await folderAncestry(requestedParentId);
+      if (targetAncestry.some((ancestor) => ancestor.id === folderIdToUpdate)) {
+        return res.status(400).json({ error: 'A folder cannot be moved inside itself or one of its descendants' });
+      }
+      update.addParents = requestedParentId;
+      update.removeParents = current.parentId || undefined;
+    }
+    if (!Object.keys(requestBody).length && !update.addParents) return res.status(400).json({ error: 'No folder changes were provided' });
+    const response = await drive.files.update({ fileId: folderIdToUpdate, requestBody, ...update });
+    invalidateRecordingDiscovery();
+    driveContentsCache.clear();
+    res.json({ folder: publicFolder(response.data, response.data.parents?.[0] || current.parentId || folderId) });
+  } catch (error) {
+    console.error('admin Drive folder update failed', safeErrorCode(error));
+    const code = safeErrorCode(error);
+    res.status(code === 'drive_authorization' ? 403 : code === 'drive_folder_not_found' ? 404 : 500).json({ error: 'Unable to update Google Drive folder', code });
+  }
+});
 app.get('/api/admin/rabbis', requireAdmin, async (_req, res) => { try { const [content, contents] = await Promise.all([readContent(), listDriveContents(folderId)]); res.json({ rabbis: mergeRabbis(content, contents.folders).filter((rabbi) => rabbi.enabled !== false).map(publicRabbi) }); } catch { res.status(500).json({ error: 'Unable to load Rabbis' }); } });
 app.get('/api/admin/categories', requireAdmin, async (_req, res) => { try { const content = await readContent(); res.json({ categories: content.categories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)).map(publicCategory) }); } catch { res.status(500).json({ error: 'Unable to load categories' }); } });
-app.get('/api/admin/recordings', requireAdmin, async (_req, res) => { try { const [content, covers, discovery] = await Promise.all([readContent(), readMapping(), getRecordingDiscovery()]); const files = discovery.entries.map(({ file, folder }) => ({ ...file, _folderContext: folder })); const recordings = buildHome(content, files, covers, discovery.rootContents.folders).recordings.map((recording) => ({ ...recording, description: recording.description || '', visible: recording.visible !== false, featured: Boolean(recording.featured), trending: Boolean(recording.trending), new: Boolean(recording.new), sortOrder: Number(recording.sortOrder || 0) })); res.json({ recordings }); } catch { res.status(500).json({ error: 'Unable to load recordings' }); } });
+app.get('/api/admin/recordings', requireAdmin, async (_req, res) => { try { const [content, covers, discovery] = await Promise.all([readContent(), readMapping(), getRecordingDiscovery()]); const files = discovery.entries.map(({ file, folder, folderPath }) => ({ ...file, _folderContext: folder, _folderPath: folderPath })); const recordings = buildHome(content, files, covers, discovery.rootContents.folders).recordings.map((recording) => ({ ...recording, description: recording.description || '', visible: recording.visible !== false, featured: Boolean(recording.featured), trending: Boolean(recording.trending), new: Boolean(recording.new), sortOrder: Number(recording.sortOrder || 0) })); res.json({ recordings }); } catch { res.status(500).json({ error: 'Unable to load recordings' }); } });
 app.get('/api/admin/discovery-diagnostics', requireAdmin, async (_req, res) => {
   try {
     const discovery = await getRecordingDiscovery();
@@ -1218,7 +1350,7 @@ app.post('/api/admin/carousel', requireAdmin, async (req, res) => { try { const 
 app.patch('/api/admin/carousel/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const item = findEntity(content.carousel || [], req.params.id); if (!item) return res.status(404).json({ error: 'Carousel item not found' }); Object.assign(item, { ...req.body, id: item.id, updatedAt: new Date().toISOString() }); await writeContent(content); res.json({ item }); } catch { res.status(500).json({ error: 'Unable to update carousel item' }); } });
 app.delete('/api/admin/carousel/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); content.carousel = (content.carousel || []).filter((item) => item.id !== req.params.id); await writeContent(content); res.json({ deleted: true }); } catch { res.status(500).json({ error: 'Unable to delete carousel item' }); } });
 app.post('/api/admin/categories', requireAdmin, async (req, res) => { const name = String(req.body?.name || '').trim(); if (!name) return res.status(400).json({ error: 'Category name is required' }); try { const content = await readContent(); const category = { id: newContentId('category'), name: name.slice(0, 100), description: String(req.body.description || '').slice(0, 500), folderIds: [], enabled: req.body.enabled !== false, sortOrder: Number(req.body.sortOrder || content.categories.length), createdAt: new Date().toISOString() }; content.categories.push(category); await writeContent(content); res.status(201).json({ category: publicCategory(category) }); } catch { res.status(500).json({ error: 'Unable to create category' }); } });
-app.patch('/api/admin/categories/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const category = findEntity(content.categories, req.params.id); if (!category) return res.status(404).json({ error: 'Category not found' }); const requestedFolderIds = req.body.folderIds === undefined ? category.folderIds : (Array.isArray(req.body.folderIds) ? [...new Set(req.body.folderIds.filter(validId))] : []); Object.assign(category, { ...req.body, name: req.body.name === undefined ? category.name : String(req.body.name).trim().slice(0, 100), folderIds: requestedFolderIds, sortOrder: req.body.sortOrder === undefined ? category.sortOrder : Number(req.body.sortOrder), enabled: req.body.enabled === undefined ? category.enabled : Boolean(req.body.enabled), updatedAt: new Date().toISOString() }); if (!category.name) return res.status(400).json({ error: 'Category name is required' }); await writeContent(content); res.json({ category: publicCategory(category) }); } catch { res.status(500).json({ error: 'Unable to update category' }); } });
+app.patch('/api/admin/categories/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const category = findEntity(content.categories, req.params.id); if (!category) return res.status(404).json({ error: 'Category not found' }); const requestedFolderIds = req.body.folderIds === undefined ? category.folderIds : (Array.isArray(req.body.folderIds) ? [...new Set(req.body.folderIds.filter(validId))] : []); if (req.body.folderIds !== undefined) { assertDriveConfigured(); await Promise.all(requestedFolderIds.map((folderId) => assertFolderUnderRoot(folderId))); } Object.assign(category, { ...req.body, name: req.body.name === undefined ? category.name : String(req.body.name).trim().slice(0, 100), folderIds: requestedFolderIds, sortOrder: req.body.sortOrder === undefined ? category.sortOrder : Number(req.body.sortOrder), enabled: req.body.enabled === undefined ? category.enabled : Boolean(req.body.enabled), updatedAt: new Date().toISOString() }); if (!category.name) return res.status(400).json({ error: 'Category name is required' }); await writeContent(content); res.json({ category: publicCategory(category) }); } catch (error) { console.error('category update failed', safeErrorCode(error)); const code = safeErrorCode(error); res.status(code === 'drive_authorization' ? 403 : code === 'drive_folder_not_found' ? 404 : 500).json({ error: 'Unable to update category', code }); } });
 app.delete('/api/admin/categories/:id', requireAdmin, async (req, res) => { try { const content = await readContent(); const previousLength = content.categories.length; content.categories = content.categories.filter((category) => category.id !== req.params.id); if (content.categories.length === previousLength) return res.status(404).json({ error: 'Category not found' }); Object.values(content.recordings).forEach((recording) => { if (recording.categoryId === req.params.id) delete recording.categoryId; }); await writeContent(content); res.json({ deleted: true }); } catch { res.status(500).json({ error: 'Unable to delete category' }); } });
 app.patch('/api/admin/recordings/:id', requireAdmin, async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const recording = await mutateContent((content) => { const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, ...req.body, title: req.body.title === undefined ? current.title : displayRecordingTitle(req.body.title, '', recordingTimeZone), updatedAt: new Date().toISOString() }; return content.recordings[req.params.id]; }); res.json({ recording }); } catch (error) { console.error('recording metadata save failed', error.code || error.message); res.status(500).json({ error: 'Unable to save recording metadata' }); } });
 async function getRecordingMetadata(drive, recordingId) {

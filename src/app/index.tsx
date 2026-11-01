@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { useListener } from '@/components/listener-provider';
-import { PublicHome } from '@/components/public-site';
+import { PublicHome, TimeFrameBuilder } from '@/components/public-site';
 import { SeekBar } from '@/components/seek-bar';
 import { apiUrl } from '@/lib/api';
 import { normalizeRecordingTitle } from '@/lib/recording-title';
@@ -300,6 +300,8 @@ export default function HomeScreen() {
               )}
 
               {featuredRabbis && featuredRabbis.length > 0 && <><View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Featured Rabbis</Text><Text style={styles.sectionCount}>{featuredRabbis.length}</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRow}>{featuredRabbis.map((rabbi) => <Pressable key={rabbi.id} onPress={() => router.push(`/rabbis/${rabbi.id}` as never)} style={styles.rabbiCard}>{rabbi.photoUrl ? <Image contentFit="cover" source={{ uri: apiUrl(rabbi.photoUrl) }} style={styles.rabbiPhoto} /> : <View style={[styles.rabbiPhoto, styles.rabbiFallback]}><Text style={styles.rabbiInitials}>{rabbi.name.slice(0, 2).toUpperCase()}</Text></View>}<Text style={styles.rabbiName} numberOfLines={1}>{rabbi.name}</Text><Text style={styles.rabbiDescription} numberOfLines={2}>{rabbi.description || 'Explore this Rabbi\'s shiurim'}</Text></Pressable>)}</ScrollView></>}
+
+              <TimeFrameBuilder recordings={[]} />
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
                 {categoryNames.map((item) => (
