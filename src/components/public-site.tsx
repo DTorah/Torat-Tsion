@@ -33,6 +33,8 @@ type Rabbi = { id: string; name: string; description?: string; photoUrl?: string
 type Category = { id: string; name: string; description?: string };
 type CarouselItem = { id: string; kind: string; title: string; subtitle?: string; coverUrl?: string | null; recordingId?: string | null; countdownAt?: string | null; link?: string | null };
 type HomePayload = { recordings?: Recording[]; folders?: DriveFolder[]; rabbis?: Rabbi[]; categories?: Category[]; featuredShiurim?: Recording[]; newThisWeek?: Recording[]; trending?: Recording[]; carousel?: CarouselItem[] };
+type YouTubeVideo = { id: string; title: string; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; watchUrl: string };
+type YouTubeSource = { key: string; label: string; videos: YouTubeVideo[] };
 type FolderPayload = { folder?: DriveFolder; recordings?: Recording[]; folders?: DriveFolder[]; error?: string };
 
 function Cover({ recording, large = false, mobile = false }: { recording: Recording; large?: boolean; mobile?: boolean }) {
@@ -263,6 +265,11 @@ function Shelf({ title, recordings, link, prominent = false }: { title: string; 
   return <View style={[styles.section, prominent && styles.featuredSection]}><SectionTitle title={title} link={link} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</ScrollView></View>;
 }
 
+function YouTubeShelf({ source }: { source: YouTubeSource }) {
+  if (!source.videos.length) return null;
+  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={styles.youtubeCard}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶ Play</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text><Text numberOfLines={1} style={styles.youtubeMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}</Text></Pressable></Link>)}</ScrollView></View>;
+}
+
 function useCountdownLabel(countdownAt?: string | null) {
   const [label, setLabel] = useState<string | null>(null);
   useEffect(() => {
@@ -385,6 +392,7 @@ export function PublicHome() {
   const [lazyError, setLazyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { positions } = useListener();
+  const [youtubeSources, setYoutubeSources] = useState<YouTubeSource[]>([]);
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
   const fullHomeRequested = useRef(false);
@@ -392,6 +400,7 @@ export function PublicHome() {
   const folderId = Array.isArray(folderParam) ? folderParam[0] : folderParam;
   useEffect(() => setHydrated(true), []);
   useEffect(() => { if (folderId) return; fetchPublicJson<HomePayload>('/api/home?summary=1').then(setPayload).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load the library')).finally(() => setLoading(false)); }, [folderId]);
+  useEffect(() => { if (folderId) return; fetchPublicJson<{ sources?: YouTubeSource[] }>('/api/videos').then((value) => setYoutubeSources(value.sources || [])).catch(() => setYoutubeSources([])); }, [folderId]);
   const router = useRouter();
   const loadRemainingHome = () => {
     if (fullHomeRequested.current) return;
@@ -414,6 +423,8 @@ export function PublicHome() {
     <ToratWelcome />
     {loading ? <View style={styles.state}><ActivityIndicator color="#2d6cdf" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateTitle}>The library is unavailable</Text><Text style={styles.stateText}>{error}</Text></View> : <>
       <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
+      <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
+      {youtubeSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}
 
       {/* TOP: content carousel — live/upcoming when curated by Admin, otherwise recently added */}
       {Boolean(payload?.carousel?.length) && <View style={styles.section}><SectionTitle title="Live & Recent" /><ContentCarousel items={payload?.carousel || []} /></View>}
@@ -421,9 +432,8 @@ export function PublicHome() {
       {/* MIDDLE: Rabbis, then Time Frame */}
       {Boolean(payload?.rabbis?.length) ? <View style={styles.section}><SectionTitle title="Rabbis" link="/rabbis" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{(payload?.rabbis || []).map((rabbi) => <RabbiCard key={rabbi.id} rabbi={rabbi} />)}</ScrollView></View> : <FolderSection folders={payload?.folders || []} onOpen={(folder) => router.push(`/?folder=${encodeURIComponent(folder.id)}` as never)} />}
       <TimeFrameBuilder recordings={recordings} />
-      <View style={styles.section}><SectionTitle title="Explore Categories" link="/categories" /><View style={styles.categoryGrid}>{(payload?.categories || []).map((category) => <Link key={category.id} href={`/categories/${category.id}`} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{category.name}</Text><Text numberOfLines={2} style={styles.categoryDescription}>{category.description || 'Browse shiurim'}</Text></Pressable></Link>)}</View></View>
+      <View style={styles.section}><SectionTitle title="Browse by Topic" link="/categories" /><View style={styles.categoryGrid}>{(payload?.categories || []).map((category) => <Link key={category.id} href={`/categories/${category.id}`} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{category.name}</Text><Text numberOfLines={2} style={styles.categoryDescription}>{category.description || 'Browse shiurim'}</Text></Pressable></Link>)}</View></View>
       <Shelf title="Continue Listening" recordings={continueListening} />
-      <Shelf title="New This Week" recordings={payload?.newThisWeek || []} />
       <Shelf title="Trending" recordings={payload?.trending || []} />
       {lazyError && <View style={styles.state}><Text style={styles.stateText}>{lazyError}</Text><Pressable onPress={() => { fullHomeRequested.current = false; setLazyError(null); loadRemainingHome(); }}><Text style={{ color: '#1d4ea8', fontWeight: '700' }}>Load recordings</Text></Pressable></View>}
 
@@ -624,17 +634,25 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
-    width: 220,
+    width: 204,
     shadowColor: '#b9cfe8',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
   },
-  cardBody: { minHeight: 138, padding: 14 },
+  cardBody: { minHeight: 128, padding: 12 },
   cardCategory: { color: '#2d6cdf', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  cardTitle: { color: '#142950', fontSize: 17, fontWeight: '700', lineHeight: 21, marginTop: 7 },
+  cardTitle: { color: '#142950', fontSize: 15, fontWeight: '700', lineHeight: 19, marginTop: 7 },
   cardMeta: { color: '#6a7e9b', fontSize: 12, marginTop: 6 },
   cardDate: { color: '#6a7e9b', fontSize: 11, marginTop: 5 },
+  youtubeCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 14, borderWidth: 1, overflow: 'hidden', paddingBottom: 11, width: 236 },
+  youtubeThumbnail: { backgroundColor: '#d9e7ef', height: 132, overflow: 'hidden', position: 'relative', width: '100%' },
+  youtubeFallback: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  youtubeFallbackText: { color: '#356078', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  youtubePlay: { backgroundColor: '#123b63', borderRadius: 7, bottom: 8, left: 8, paddingHorizontal: 9, paddingVertical: 5, position: 'absolute' },
+  youtubePlayText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  youtubeTitle: { color: '#142950', fontSize: 14, fontWeight: '800', lineHeight: 18, marginHorizontal: 12, marginTop: 10 },
+  youtubeMeta: { color: '#6a7e9b', fontSize: 11, marginHorizontal: 12, marginTop: 5 },
   cardSkip: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 7 },
   cardSkipText: { color: '#1d4ea8', fontSize: 10, fontWeight: '800' },
   cardActions: { alignItems: 'center', flexDirection: 'row', gap: 14 },

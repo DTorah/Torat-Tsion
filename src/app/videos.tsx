@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { apiUrl } from '@/lib/api';
@@ -43,6 +44,7 @@ function VideoCard({ video, onPlay }: { video: Video; onPlay: () => void }) {
 }
 
 export default function VideosScreen() {
+  const { video: requestedVideo } = useLocalSearchParams<{ video?: string }>();
   const [payload, setPayload] = useState<VideoPayload | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [query, setQuery] = useState('');
@@ -54,11 +56,11 @@ export default function VideosScreen() {
         const value = await response.json() as VideoPayload;
         if (!response.ok) throw new Error(value.error || 'Unable to load YouTube videos');
         setPayload(value);
-        setSelectedVideo(value.videos?.[0] || null);
+        setSelectedVideo(value.videos?.find((item) => item.id === requestedVideo) || value.videos?.[0] || null);
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load YouTube videos'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [requestedVideo]);
   const normalizedQuery = query.trim().toLowerCase();
   const sources = useMemo(() => (payload?.sources || []).map((source) => ({
     ...source,
