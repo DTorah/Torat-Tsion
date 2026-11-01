@@ -54,3 +54,15 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Render deployment
+
+The repository defines two independent Render services in [`render.yaml`](./render.yaml):
+
+- `torat-tsion-api` remains the Node backend. Keep its existing server-only OAuth, Drive, admin, and YouTube environment variables unchanged.
+- `torat-tsion-web` is the public Expo web site. It runs `npm ci && npm run build:web` from the repository root and publishes `dist`.
+
+The static site must define `EXPO_PUBLIC_API_URL=https://torat-tsion-api.onrender.com`. This is a public API base URL, not a secret. The Expo app also has this URL as its production-safe fallback in [`src/lib/api.ts`](./src/lib/api.ts).
+
+For a new Render Static Site, connect `DTorah/Torat-Tsion`, select branch `main`, set the root directory to `.`, use the build command `npm ci && npm run build:web`, and set the publish directory to `dist`. Render Blueprint deployment will apply the same settings from `render.yaml`.
+
+Expo Router generates route HTML into `dist`; the rewrite rule keeps direct navigation and refreshes working for routes such as `/explore`, `/search`, `/videos`, and `/recordings/:id`. Render may assign the service URL `https://torat-tsion-web.onrender.com`; use the actual URL shown by Render after service creation.
