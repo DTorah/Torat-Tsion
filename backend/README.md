@@ -26,6 +26,8 @@ Copy `backend/.env.example` to a server-side environment configuration. Do not c
 
 Never expose server variables through `EXPO_PUBLIC_*` variables. With GitHub content storage configured, Admin content, Featured selections, Carousel settings, category assignments, duration/Skip-to-Shiur metadata, Rabbi covers, and recording cover overrides survive Render redeploys without a paid persistent disk. The GitHub token is never returned by the API or included in the Expo client.
 
+The root Render Blueprint declares `YOUTUBE_API_KEY` on `torat-tsion-api` with `sync: false`, so Render never receives a value from Git. Enter the key manually in the service's Environment settings, save, and redeploy; the running API reports only a boolean/configuration status.
+
 The web Home page requests `/api/home?summary=1` first: this reads root folders and bounded Admin-curated recording IDs without waiting for recursive library discovery. The full metadata response is loaded only when the visitor scrolls to the lower Home shelves. Drive folder listings and recursive discovery results are cached in memory for five minutes, and the duration worker reuses that discovery cache between bounded hydration batches. Parsha labels use the Hebcal calendar's diaspora reading schedule and are omitted on holiday readings.
 
 ## One-time Google Drive authorization
