@@ -8,10 +8,11 @@ services:
     plan: free
 
   - name: torat-tsion-web
-    type: static
+    type: web
+    runtime: static
     rootDir: .
     buildCommand: npm ci && npm run build:web
-    staticPublishPath: ./dist
+    staticPublishPath: dist
     envVars:
       - key: EXPO_PUBLIC_API_URL
         value: https://torat-tsion-api.onrender.com
