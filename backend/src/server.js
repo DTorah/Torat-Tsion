@@ -104,6 +104,10 @@ const pendingOAuthStates = new Map();
 const youtubeApiKey = process.env.YOUTUBE_API_KEY?.trim() || '';
 const youtubeChannelId = process.env.YOUTUBE_CHANNEL_ID?.trim() || '';
 const youtubePlaylistId = process.env.YOUTUBE_PLAYLIST_ID?.trim() || '';
+const youtubeBakhshiChannelId = process.env.YOUTUBE_BAKHSHI_CHANNEL_ID?.trim() || youtubeChannelId;
+const youtubeBakhshiPlaylistId = process.env.YOUTUBE_BAKHSHI_PLAYLIST_ID?.trim() || youtubePlaylistId;
+const youtubeShabbatShalomChannelId = process.env.YOUTUBE_SHABBAT_SHALOM_CHANNEL_ID?.trim() || '';
+const youtubeShabbatShalomPlaylistId = process.env.YOUTUBE_SHABBAT_SHALOM_PLAYLIST_ID?.trim() || '';
 const youtubeCache = new Map();
 const youtubeCacheTtlMs = 5 * 60 * 1000;
 
@@ -311,7 +315,7 @@ function googleOAuthConfigured() {
 }
 
 function youtubeConfigured() {
-  return Boolean(youtubeApiKey && (youtubeChannelId || youtubePlaylistId));
+  return Boolean(youtubeApiKey);
 }
 
 function youtubeVideoId(value) {
@@ -325,71 +329,108 @@ async function youtubeRequest(resource, params) {
   return response.json();
 }
 
+const youtubeSources = [
+  {
+    key: 'bakhshi',
+    label: 'Rabbi Isaac Bakhshi',
+    channelId: youtubeBakhshiChannelId,
+    playlistId: youtubeBakhshiPlaylistId,
+    forUsername: 'rabbibakhshi',
+    url: 'https://www.youtube.com/user/rabbibakhshi/featured',
+  },
+  {
+    key: 'shabbat-shalom',
+    label: 'Shabbat Shalom with Rabbi Bakhshi',
+    channelId: youtubeShabbatShalomChannelId,
+    playlistId: youtubeShabbatShalomPlaylistId,
+    forHandle: '@shabbatshalombyrabbibakhsh1051',
+    url: 'https://www.youtube.com/@shabbatshalombyrabbibakhsh1051',
+  },
+];
+
+function youtubeConfigurationStatus() {
+  const missing = [];
+  if (!youtubeApiKey) missing.push('YOUTUBE_API_KEY');
+  return {
+    configured: missing.length === 0,
+    missing,
+    sources: youtubeSources.map(({ key, label, channelId, playlistId }) => ({
+      key,
+      label,
+      configured: Boolean(channelId || playlistId),
+    })),
+  };
+}
+
+async function resolveYoutubeSource(source) {
+  if (source.channelId || source.playlistId) return source;
+  const lookup = source.forHandle ? { forHandle: source.forHandle } : { forUsername: source.forUsername };
+  const channel = await youtubeRequest('channels', {
+    part: 'contentDetails,snippet',
+    ...lookup,
+    maxResults: '1',
+  });
+  const item = channel.items?.[0];
+  return {
+    ...source,
+    channelId: item?.id || '',
+    playlistId: item?.contentDetails?.relatedPlaylists?.uploads || '',
+    resolvedChannelTitle: item?.snippet?.title || source.label,
+  };
+}
+
 async function youtubeVideos(query = '') {
-  if (!youtubeConfigured()) return { configured: false, videos: [] };
+  const configuration = youtubeConfigurationStatus();
+  if (!youtubeConfigured()) return { ...configuration, videos: [] };
   const cacheKey = query.trim().toLowerCase();
   const cached = youtubeCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  let playlistId = youtubePlaylistId;
-  if (!playlistId) {
-    const channel = await youtubeRequest('channels', {
-      part: 'contentDetails',
-      id: youtubeChannelId,
-      maxResults: '1',
-    });
-    playlistId = channel.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-  }
-  if (!playlistId) return { configured: true, videos: [] };
-
-  const playlist = await youtubeRequest('playlistItems', {
-    part: 'snippet,contentDetails',
-    playlistId,
-    maxResults: '24',
-  });
-  let items = (playlist.items || []).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
-  if (query.trim() && youtubeChannelId) {
-    const search = await youtubeRequest('search', {
-      part: 'snippet',
-      channelId: youtubeChannelId,
-      q: query.trim(),
-      type: 'video',
+  const sourceResults = await Promise.all(youtubeSources.map(async (source) => {
+    const resolved = await resolveYoutubeSource(source);
+    if (!resolved.playlistId) return { ...source, videos: [] };
+    const playlist = await youtubeRequest('playlistItems', {
+      part: 'snippet,contentDetails',
+      playlistId: resolved.playlistId,
       maxResults: '24',
-      order: 'relevance',
     });
-    items = (search.items || []).map((item) => ({
-      snippet: item.snippet,
-      contentDetails: { videoId: item.id?.videoId },
-    })).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
-  } else if (query.trim()) {
-    const normalizedQuery = query.trim().toLowerCase();
-    items = items.filter((item) => `${item.snippet?.title || ''} ${item.snippet?.description || ''}`.toLowerCase().includes(normalizedQuery));
-  }
-
-  const ids = [...new Set(items.map((item) => item.contentDetails.videoId))];
-  const details = ids.length ? await youtubeRequest('videos', {
-    part: 'snippet,contentDetails',
-    id: ids.join(','),
-    maxResults: '50',
-  }) : { items: [] };
-  const detailById = new Map((details.items || []).map((item) => [item.id, item]));
-  const videos = items.map((item) => {
-    const id = item.contentDetails.videoId;
-    const detail = detailById.get(id);
-    const snippet = detail?.snippet || item.snippet || {};
+    let items = (playlist.items || []).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
+    if (query.trim()) {
+      const normalizedQuery = query.trim().toLowerCase();
+      items = items.filter((item) => `${item.snippet?.title || ''} ${item.snippet?.description || ''}`.toLowerCase().includes(normalizedQuery));
+    }
+    const ids = [...new Set(items.map((item) => item.contentDetails.videoId))];
+    const details = ids.length ? await youtubeRequest('videos', {
+      part: 'snippet,contentDetails',
+      id: ids.join(','),
+      maxResults: '50',
+    }) : { items: [] };
+    const detailById = new Map((details.items || []).map((item) => [item.id, item]));
     return {
-      id,
-      title: String(snippet.title || 'YouTube class'),
-      description: String(snippet.description || ''),
-      publishedAt: snippet.publishedAt || null,
-      channelTitle: String(snippet.channelTitle || 'Ahavat Shalom'),
-      thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
-      watchUrl: `https://www.youtube.com/watch?v=${id}`,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
-      source: 'YouTube',
+      key: source.key,
+      label: source.label,
+      url: source.url,
+      videos: items.map((item) => {
+        const id = item.contentDetails.videoId;
+        const detail = detailById.get(id);
+        const snippet = detail?.snippet || item.snippet || {};
+        return {
+          id,
+          title: String(snippet.title || 'YouTube class'),
+          description: String(snippet.description || ''),
+          publishedAt: snippet.publishedAt || null,
+          channelTitle: String(snippet.channelTitle || resolved.resolvedChannelTitle || source.label),
+          thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
+          watchUrl: `https://www.youtube.com/watch?v=${id}`,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
+          source: 'YouTube',
+          sourceKey: source.key,
+          sourceLabel: source.label,
+        };
+      }),
     };
-  });
-  const value = { configured: true, videos };
+  }));
+  const value = { ...configuration, configured: true, sources: sourceResults, videos: sourceResults.flatMap((source) => source.videos) };
   youtubeCache.set(cacheKey, { expiresAt: Date.now() + youtubeCacheTtlMs, value });
   return value;
 }

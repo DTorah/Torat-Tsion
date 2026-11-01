@@ -55,17 +55,12 @@ function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: st
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/explore', label: 'Shiurim' },
-    { href: '/videos', label: 'Videos' },
-    { href: '/minyanim', label: 'Minyanim' },
-    { href: '/zmanim', label: 'Zmanim' },
+    { href: '/videos', label: 'YouTube Videos' },
     { href: '/parsha', label: 'Parsha' },
-    { href: '/donate', label: 'Donate' },
+    { href: '/rabbis/bakhshi', label: 'Rabbi' },
     { href: '/search', label: 'Search' },
+    { href: '/donate', label: 'Donate' },
     { href: '/favorites', label: 'Library' },
-    { href: '/rabbis', label: 'Rabbis' },
-    { href: '/categories', label: 'Categories' },
-    { href: '/collections', label: 'Collections' },
-    { href: '/privacy', label: 'Privacy' },
   ] as const;
 
   return (

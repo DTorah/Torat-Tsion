@@ -10,8 +10,8 @@ Copy `backend/.env.example` to a server-side environment configuration. Do not c
 - `GOOGLE_OAUTH_REFRESH_TOKEN`: server-only offline OAuth refresh token. Never expose or commit it.
 - `GOOGLE_OAUTH_REDIRECT_URI`: `https://torat-tsion-api.onrender.com/auth/google/callback`; this must exactly match the Google Cloud OAuth client configuration.
 - `YOUTUBE_API_KEY`: optional server-only YouTube Data API v3 key. Restrict it to YouTube Data API v3 in Google Cloud.
-- `YOUTUBE_CHANNEL_ID`: optional Ahavat Shalom/Rabbi Bakhshi channel ID. Use the verified channel ID, not an invented handle.
-- `YOUTUBE_PLAYLIST_ID`: optional playlist ID; when set, it is used instead of the channel uploads playlist.
+- `YOUTUBE_BAKHSHI_CHANNEL_ID`, `YOUTUBE_BAKHSHI_PLAYLIST_ID`: optional IDs for the Rabbi Bakhshi source. Existing `YOUTUBE_CHANNEL_ID` and `YOUTUBE_PLAYLIST_ID` values remain supported as aliases.
+- `YOUTUBE_SHABBAT_SHALOM_CHANNEL_ID`, `YOUTUBE_SHABBAT_SHALOM_PLAYLIST_ID`: optional IDs for the Shabbat Shalom source. If channel IDs are omitted, the backend resolves the supplied official username/handle through the YouTube Data API.
 - `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b` (the Torat Tsion root folder).
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`: server-only admin settings. Use a random session secret of at least 32 bytes.
 - `GITHUB_CONTENTS_TOKEN`: server-only fine-grained GitHub token with **Contents: Read and write** access to `GITHUB_CONTENTS_REPOSITORY`. When configured, it stores CMS content and uploaded covers on the `GITHUB_CONTENTS_BRANCH` branch.
@@ -47,7 +47,7 @@ Because the required scope is changing from the previous read-only grant, the ex
 
 Existing folder IDs, recording IDs, and Drive files are not recreated or migrated. If Google rejects a mutation because the account lacks access to a folder, the Admin API reports an authorization error and does not modify CMS content.
 
-YouTube integration uses the official Data API only when the optional variables are configured. Video playback uses YouTube's official privacy-enhanced embed URL and does not download or re-host YouTube content. Kol Halashon has no verified public API/embed contract in this project, so its classes remain external links until official integration details are supplied.
+YouTube integration requires the server-only `YOUTUBE_API_KEY` and uses the official Data API to resolve both verified sources, cache their public uploads, and return titles/thumbnails/embed URLs. Video playback uses YouTube's official privacy-enhanced embed URL and does not download or re-host YouTube content. Kol Halashon has no verified public API/embed contract in this project, so its classes remain external links until official integration details are supplied.
 
 ## Local run
 
