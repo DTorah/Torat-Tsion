@@ -16,6 +16,7 @@ type DriveDiagnostic = {
   error?: string;
   errorCode?: string;
   errorStatus?: number | string | null;
+  googleCode?: number | string | null;
   errorReason?: string | null;
   errorMessage?: string | null;
 };
@@ -50,7 +51,53 @@ export default function AdminDashboard() {
   }, [session.token]);
 
   if (!session.token) return <AdminLogin onLogin={session.setToken} />;
-  return <AdminShell token={session.token} title="Dashboard"><View style={styles.hero}><Text style={styles.heroTitle}>Content control center</Text><Text style={styles.heroText}>Manage the public library without rebuilding the Android app.</Text></View><View style={styles.drivePanel}><View style={styles.driveHeading}><View style={styles.driveCopy}><Text style={styles.panelTitle}>Google Drive connection</Text><Text style={styles.cardText}>Secure admin-only verification of the Torat Sion media folder.</Text></View><Pressable disabled={driveDiagnosticLoading} onPress={() => void runDriveDiagnostic()} style={[styles.action, driveDiagnosticLoading && styles.disabled]}><Text style={styles.actionText}>{driveDiagnosticLoading ? 'Checking...' : 'Run check'}</Text></Pressable></View>{driveDiagnosticMessage && <Text style={styles.error}>{driveDiagnosticMessage}</Text>}{driveDiagnostic && <View style={styles.diagnosticGrid}><Diagnostic label="Folder ID" value={driveDiagnostic.configuredFolderId || 'Unavailable'} /><Diagnostic label="Folder format" value={driveDiagnostic.folderFormatValid ? 'Valid' : 'Invalid'} /><Diagnostic label="Metadata access" value={driveDiagnostic.metadataAccessible ? 'Accessible' : 'Unavailable'} /><Diagnostic label="Folder" value={driveDiagnostic.folderName || 'Unavailable'} /><Diagnostic label="Child listing" value={driveDiagnostic.childrenAccessible ? `Accessible (${driveDiagnostic.childCount ?? 0} shown)` : 'Unavailable'} /><Diagnostic label="Drive access" value={driveDiagnostic.driveAccess ? 'Verified' : 'Not verified'} emphasis={!driveDiagnostic.driveAccess} />{driveDiagnostic.error && <Text style={styles.error}>{driveDiagnostic.error}</Text>}{driveDiagnostic.errorCode && <Diagnostic label="Google error" value={`${driveDiagnostic.errorCode} · HTTP ${driveDiagnostic.errorStatus ?? 'unknown'} · ${driveDiagnostic.errorReason || driveDiagnostic.errorMessage || 'No further detail'}`} emphasis />}</View>}</View><Text style={styles.section}>CONTENT MANAGEMENT</Text><View style={styles.grid}>{stageTwo.map(([label, href]) => <Pressable key={label} onPress={() => router.push(href as never)} style={styles.card}><Text style={styles.cardTitle}>{label}</Text><Text style={styles.cardText}>Open management</Text></Pressable>)}</View></AdminShell>;
+  return (
+    <AdminShell token={session.token} title="Dashboard">
+      <View style={styles.hero}>
+        <Text style={styles.heroTitle}>Content control center</Text>
+        <Text style={styles.heroText}>Manage the public library without rebuilding the Android app.</Text>
+      </View>
+      <View style={styles.drivePanel}>
+        <View style={styles.driveHeading}>
+          <View style={styles.driveCopy}>
+            <Text style={styles.panelTitle}>Google Drive connection</Text>
+            <Text style={styles.cardText}>Secure admin-only verification of the Torat Sion media folder.</Text>
+          </View>
+          <Pressable disabled={driveDiagnosticLoading} onPress={() => void runDriveDiagnostic()} style={[styles.action, driveDiagnosticLoading && styles.disabled]}>
+            <Text style={styles.actionText}>{driveDiagnosticLoading ? 'Checking...' : 'Run check'}</Text>
+          </Pressable>
+        </View>
+        {driveDiagnosticMessage && <Text style={styles.error}>{driveDiagnosticMessage}</Text>}
+        {driveDiagnostic && (
+          <View style={styles.diagnosticGrid}>
+            <Diagnostic label="Folder ID" value={driveDiagnostic.configuredFolderId || 'Unavailable'} />
+            <Diagnostic label="Folder format" value={driveDiagnostic.folderFormatValid ? 'Valid' : 'Invalid'} />
+            <Diagnostic label="Metadata access" value={driveDiagnostic.metadataAccessible ? 'Accessible' : 'Unavailable'} />
+            <Diagnostic label="Folder" value={driveDiagnostic.folderName || 'Unavailable'} />
+            <Diagnostic label="Child listing" value={driveDiagnostic.childrenAccessible ? `Accessible (${driveDiagnostic.childCount ?? 0} shown)` : 'Unavailable'} />
+            <Diagnostic label="Drive access" value={driveDiagnostic.driveAccess ? 'Verified' : 'Not verified'} emphasis={!driveDiagnostic.driveAccess} />
+            {driveDiagnostic.error && <Text style={styles.error}>{driveDiagnostic.error}</Text>}
+            {driveDiagnostic.errorCode && (
+              <Diagnostic
+                label="Google error"
+                value={`${driveDiagnostic.errorCode} · Google ${driveDiagnostic.googleCode ?? 'unknown'} · HTTP ${driveDiagnostic.errorStatus ?? 'unknown'} · ${driveDiagnostic.errorReason || driveDiagnostic.errorMessage || 'No further detail'}`}
+                emphasis
+              />
+            )}
+          </View>
+        )}
+      </View>
+      <Text style={styles.section}>CONTENT MANAGEMENT</Text>
+      <View style={styles.grid}>
+        {stageTwo.map(([label, href]) => (
+          <Pressable key={label} onPress={() => router.push(href as never)} style={styles.card}>
+            <Text style={styles.cardTitle}>{label}</Text>
+            <Text style={styles.cardText}>Open management</Text>
+          </Pressable>
+        ))}
+      </View>
+    </AdminShell>
+  );
 }
 function Diagnostic({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
   return <View style={styles.diagnosticItem}><Text style={styles.diagnosticLabel}>{label}</Text><Text style={[styles.diagnosticValue, emphasis && styles.diagnosticWarning]} selectable>{value}</Text></View>;

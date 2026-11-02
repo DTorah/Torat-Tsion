@@ -132,7 +132,12 @@ function safeErrorCode(error) {
     error?.code ??
     error?.status ??
     null;
+  const googleError = error?.response?.data?.error;
+  const googleErrorCode = typeof googleError === 'string'
+    ? googleError
+    : googleError?.status ?? googleError?.code ?? null;
 
+  if (googleErrorCode === 'invalid_grant') return 'google_oauth_refresh_token_invalid';
   if (status === 401) return 'drive_authentication';
   if (status === 403) return 'drive_authorization';
   if (status === 404) return 'drive_folder_not_found';
@@ -286,11 +291,17 @@ async function deleteStoredFile(relativePath, message) {
 function driveErrorDetails(error) {
   const response = error?.response;
   const apiError = response?.data?.error;
+  const googleCode = typeof apiError === 'string'
+    ? apiError
+    : apiError?.status ?? apiError?.code ?? null;
   return {
     code: safeErrorCode(error),
     status: response?.status ?? error?.status ?? error?.code ?? null,
+    googleCode,
     reason: apiError?.errors?.[0]?.reason ?? null,
-    message: apiError?.message ?? error?.message ?? null,
+    message: typeof apiError === 'string'
+      ? response?.data?.error_description ?? apiError
+      : apiError?.message ?? response?.data?.error_description ?? error?.message ?? null,
   };
 }
 
@@ -1161,6 +1172,7 @@ app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
       error: 'Google Drive access could not be verified.',
       errorCode: details.code,
       errorStatus: details.status,
+      googleCode: details.googleCode,
       errorReason: details.reason,
       errorMessage: details.message,
     });
