@@ -51,15 +51,18 @@ export function MiniPlayer() {
     playbackRate,
     setPlaybackRate,
     play,
+    stop,
   } = useListener();
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => setHydrated(true), []);
   if (!activeRecording) return null;
 
   const isDesktop = hydrated && Platform.OS === 'web' && width >= 980;
+  const compactWidth = hydrated && Platform.OS === 'web' && width < 600 ? 280 : 380;
   const shiurSkipSeconds = getShiurSkipSeconds(activeRecording);
   const showSkipToShiur = shiurSkipSeconds !== null && status.currentTime < shiurSkipSeconds - 1 && (status.duration <= 0 || status.duration > shiurSkipSeconds);
   const upNext = useMemo(() => queue.filter((item) => item.id !== activeRecording.id), [activeRecording.id, queue]);
@@ -74,8 +77,16 @@ export function MiniPlayer() {
 
   return (
     <>
-      <View style={styles.container}>
-        <Pressable onPress={openPanel} style={styles.identity}>
+      <View style={[styles.container, Platform.OS === 'web' && { width: compactWidth }]}>
+        <View style={styles.utilityBar}>
+          <Text numberOfLines={1} style={styles.utilityTitle}>{normalizeRecordingTitle(activeRecording.title)}</Text>
+          <View style={styles.utilityButtons}>
+            <Pressable accessibilityLabel={minimized ? 'Restore player' : 'Minimize player'} onPress={() => setMinimized((value) => !value)} style={styles.utilityButton}><Text style={styles.utilityIcon}>{minimized ? '□' : '−'}</Text></Pressable>
+            <Pressable accessibilityLabel={expanded ? 'Close expanded player' : 'Expand player'} onPress={() => setExpanded((value) => !value)} style={styles.utilityButton}><Text style={styles.utilityIcon}>↗</Text></Pressable>
+            <Pressable accessibilityLabel="Close player" onPress={stop} style={styles.utilityButton}><Text style={styles.utilityIcon}>×</Text></Pressable>
+          </View>
+        </View>
+        {!minimized && <><Pressable onPress={openPanel} style={styles.identity}>
           <View style={styles.art}>
             {activeRecording.coverUrl ? <Image source={{ uri: activeRecording.coverUrl }} style={StyleSheet.absoluteFill} /> : <Image source={neutralCover} style={styles.mark} />}
           </View>
@@ -96,7 +107,7 @@ export function MiniPlayer() {
           )}
         </View>
 
-        <SeekBar currentTime={status.currentTime} duration={status.duration} onSeek={(seconds) => void player.seekTo(seconds)} style={styles.progress} />
+        <SeekBar currentTime={status.currentTime} duration={status.duration} onSeek={(seconds) => void player.seekTo(seconds)} style={styles.progress} /></>}
       </View>
 
       {isDesktop && expanded && (
@@ -201,40 +212,44 @@ export function MiniPlayer() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
-    borderTopColor: '#dfeaf7',
-    borderTopWidth: 1,
-    bottom: 0,
-    flexDirection: 'row',
-    minHeight: 72,
-    padding: 10,
-    position: 'absolute',
-    width: '100%',
-    zIndex: 12,
+    borderRadius: 16,
+    bottom: 24,
+    padding: 12,
+    position: Platform.OS === 'web' ? 'fixed' as never : 'absolute',
+    right: Platform.OS === 'web' ? 24 : 0,
+    width: Platform.OS === 'web' ? 380 : '100%',
+    zIndex: 1000,
     shadowColor: '#98afd0',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
   },
+  utilityBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  utilityTitle: { color: '#111827', flex: 1, fontSize: 12, fontWeight: '800', marginRight: 8 },
+  utilityButtons: { alignItems: 'center', flexDirection: 'row', gap: 5 },
+  utilityButton: { alignItems: 'center', borderRadius: 8, height: 28, justifyContent: 'center', width: 28 },
+  utilityIcon: { color: '#4b5563', fontSize: 18, lineHeight: 20 },
   identity: { alignItems: 'center', flex: 1, flexDirection: 'row' },
   art: { alignItems: 'center', backgroundColor: '#edf5ff', borderRadius: 12, height: 44, justifyContent: 'center', overflow: 'hidden', width: 44 },
   mark: { height: 30, resizeMode: 'contain', width: 30 },
   copy: { flex: 1, marginLeft: 10 },
   title: { color: '#142950', fontSize: 13, fontWeight: '700' },
   speaker: { color: '#5b6e8d', fontSize: 11, marginTop: 3 },
-  rightControls: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  play: { alignItems: 'center', backgroundColor: '#2d6cdf', borderRadius: 999, height: 40, justifyContent: 'center', width: 40 },
+  rightControls: { alignItems: 'center', flexDirection: 'row', gap: 8, marginLeft: 8 },
+  play: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 40, justifyContent: 'center', width: 40 },
   playText: { color: '#ffffff', fontWeight: '800' },
   expand: { backgroundColor: '#edf5ff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   expandText: { color: '#1d4ea8', fontSize: 11, fontWeight: '700' },
-  progress: { backgroundColor: '#dfeaf7', bottom: 0, height: 3, left: 0, position: 'absolute', right: 0 },
-  fill: { backgroundColor: '#2d6cdf', height: 3 },
-  panelAnchor: { position: 'absolute', right: 24, bottom: 88, zIndex: 20 },
+  progress: { backgroundColor: '#e5e7eb', height: 6, marginTop: 10, overflow: 'hidden' },
+  fill: { backgroundColor: '#0052CC', height: 6 },
+  panelAnchor: { alignItems: 'center', backgroundColor: 'rgba(17,24,39,0.28)', bottom: 0, justifyContent: 'center', left: 0, position: 'fixed' as never, right: 0, top: 0, zIndex: 1100 },
   panel: {
     backgroundColor: '#fff',
     borderColor: '#dfeaf7',
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
-    width: 330,
+    maxHeight: '90%',
+    width: 420,
     padding: 14,
     shadowColor: '#6d8fc0',
     shadowOffset: { width: 0, height: 10 },

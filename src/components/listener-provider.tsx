@@ -63,6 +63,7 @@ type ListenerContextValue = {
   clearQueue: () => void;
   setPlaybackRate: (rate: number) => void;
   setRepeatMode: (mode: RepeatMode) => void;
+  stop: () => void;
 };
 
 const ListenerContext = createContext<ListenerContextValue | null>(null);
@@ -122,6 +123,7 @@ const bootstrapValue: ListenerContextValue = {
   clearQueue: () => {},
   setPlaybackRate: () => {},
   setRepeatMode: () => {},
+  stop: () => {},
 };
 
 function ListenerRuntime({ children }: { children: ReactNode }) {
@@ -251,9 +253,10 @@ function ListenerRuntime({ children }: { children: ReactNode }) {
   const addToQueue = (recording: ListenerRecording) => setQueue((current) => current.some((item) => item.id === recording.id) ? current : [...current, recording]);
   const removeFromQueue = (id: string) => setQueue((current) => current.filter((item) => item.id !== id));
   const clearQueue = () => setQueue(activeRecording ? [activeRecording] : []);
+  const stop = () => { savePosition(); player.pause(); setActiveRecording(null); setQueue([]); };
   const setPlaybackRate = (rate: number) => setPlaybackRateState(PLAYBACK_RATES.includes(rate) ? rate : 1);
   const openFullPlayer = () => { if (activeRecording && pathname !== '/player') router.push('/player' as never); };
-  const value = { player, status, activeRecording, queue, favorites, positions, playlists, recent, playbackRate, repeatMode, toggleFavorite, isFavorite: (id: string) => favorites.includes(id), play, playAll, next, previous, toggleShuffle: () => setShuffle((value) => !value), shuffle, savePosition, seekTo: (seconds: number) => player.seekTo(seconds), createPlaylist, renamePlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist, reorderPlaylist, addToQueue, removeFromQueue, clearQueue, setPlaybackRate, setRepeatMode, openFullPlayer };
+  const value = { player, status, activeRecording, queue, favorites, positions, playlists, recent, playbackRate, repeatMode, toggleFavorite, isFavorite: (id: string) => favorites.includes(id), play, playAll, next, previous, toggleShuffle: () => setShuffle((value) => !value), shuffle, savePosition, seekTo: (seconds: number) => player.seekTo(seconds), createPlaylist, renamePlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist, reorderPlaylist, addToQueue, removeFromQueue, clearQueue, setPlaybackRate, setRepeatMode, openFullPlayer, stop };
   return <ListenerContext.Provider value={value}>{children}</ListenerContext.Provider>;
 }
 

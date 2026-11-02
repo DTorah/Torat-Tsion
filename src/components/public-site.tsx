@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Link as RouterLink, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getShiurSkipSeconds, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
@@ -43,7 +43,7 @@ function Cover({ recording, large = false, mobile = false }: { recording: Record
   return recording.coverUrl ? <Image contentFit="cover" source={{ uri: apiUrl(recording.coverUrl) }} style={coverStyle} /> : <View style={StyleSheet.flatten([coverStyle, styles.coverFallback])}><Image source={neutralCover} style={styles.coverLogo} /><Text style={styles.coverCaption}>Audio recording</Text></View>;
 }
 
-function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: string) => void }) {
+export function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: string) => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const { activeRecording } = useListener();
@@ -58,49 +58,41 @@ function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: st
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/explore', label: 'Shiurim' },
-    { href: '/videos', label: 'YouTube Videos' },
     { href: '/parsha', label: 'Parsha' },
     { href: '/rabbis/bakhshi', label: 'Rabbi' },
-    { href: '/search', label: 'Search' },
     { href: '/donate', label: 'Donate' },
     { href: '/favorites', label: 'Library' },
   ] as const;
 
   return (
-    <View style={styles.header}>
-      <Link href="/" asChild>
-        <Pressable style={styles.brandPressable}>
-          <Image accessibilityLabel="Torat Tsion logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
-          <View style={styles.brandTextWrap}>
-            <Text style={styles.logo}>Torat Tsion</Text>
-          </View>
-        </Pressable>
-      </Link>
-
-      <View style={styles.nav}>
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href === '/' && pathname === '/');
-          return (
-            <Link key={item.href} href={item.href as never} asChild>
-              <Pressable style={StyleSheet.flatten([styles.navItem, isActive && styles.navItemActive])}>
-                <Text style={[styles.navText, isActive && styles.navTextActive]}>{item.label}</Text>
-              </Pressable>
-            </Link>
-          );
-        })}
-        {activeRecording && (
-          <Pressable onPress={() => router.push('/player' as never)} style={styles.playerLinkButton}>
-            <Text style={styles.playerLink}>Now playing</Text>
-          </Pressable>
-        )}
-        <Link href="/admin" asChild>
-          <Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in">
-            <Text style={styles.adminLinkText}>Admin</Text>
+    <>
+      <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+        <Link href="/" asChild>
+          <Pressable accessibilityLabel="Torat Sion home" style={styles.brandPressable}>
+            <Image accessibilityLabel="Torat Tsion logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
+            <Text style={styles.logo}>Torat Sion</Text>
           </Pressable>
         </Link>
+        <View style={[styles.nav, isMobile && styles.navMobile]}>
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href === '/' && pathname === '/');
+            return (
+              <Link key={item.href} href={item.href as never} asChild>
+                <Pressable accessibilityRole="link" style={StyleSheet.flatten([styles.navItem, isActive && styles.navItemActive])}>
+                  <Text style={styles.navIcon}>{item.label === 'Home' ? '⌂' : item.label === 'Shiurim' ? '◫' : item.label === 'Parsha' ? '◌' : item.label === 'Rabbi' ? '◉' : item.label === 'Donate' ? '♡' : '▣'}</Text>
+                  <Text style={[styles.navText, isActive && styles.navTextActive]}>{item.label}</Text>
+                </Pressable>
+              </Link>
+            );
+          })}
+          <Link href="/videos" asChild><Pressable accessibilityRole="link" style={styles.navItem}><Text style={styles.navIcon}>▷</Text><Text style={styles.navText}>Videos</Text></Pressable></Link>
+        </View>
+        <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
       </View>
 
-      <View style={[styles.search, isMobile && styles.searchMobile]}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
+        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><Text style={styles.mobileBrandText}>Torat Sion</Text></View>
+        <View style={styles.search}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           accessibilityLabel="Search shiurim"
@@ -119,8 +111,10 @@ function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: st
         <Pressable accessibilityLabel="Search" onPress={submitSearch} style={styles.searchSubmit}>
           <Text style={styles.searchSubmitText}>Search</Text>
         </Pressable>
+        </View>
+        {activeRecording && <Pressable accessibilityLabel="Open now playing" onPress={() => router.push('/player' as never)} style={styles.playerLinkButton}><Text style={styles.playerLink}>Now playing</Text></Pressable>}
       </View>
-    </View>
+    </>
   );
 }
 
@@ -146,8 +140,9 @@ function RecordingCard({ recording }: { recording: Recording }) {
   return (
     <View style={styles.recordingCard}>
       <Link href={`/recordings/${recording.id}` as never} asChild>
-        <Pressable>
+        <Pressable style={({ hovered }) => [styles.mediaPressable, hovered && styles.mediaPressableActive]}>
           <Cover recording={recording} />
+          <View style={styles.cardPlayOverlay}><Text style={styles.cardPlayIcon}>▶</Text></View>
         </Pressable>
       </Link>
 
@@ -268,7 +263,7 @@ function Shelf({ title, recordings, link, prominent = false }: { title: string; 
 
 function YouTubeShelf({ source }: { source: YouTubeSource }) {
   if (!source.videos.length) return null;
-  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={styles.youtubeCard}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶ Play</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text><Text numberOfLines={1} style={styles.youtubeMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}</Text></Pressable></Link>)}</ScrollView></View>;
+  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={({ hovered }) => [styles.youtubeCard, hovered && styles.youtubeCardActive]}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text><Text numberOfLines={1} style={styles.youtubeMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}</Text></Pressable></Link>)}</ScrollView></View>;
 }
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
@@ -538,10 +533,10 @@ function PrivacySection({ title, children }: { title: string; children: ReactNod
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: '#f4f8ff', flex: 1 },
+  page: { backgroundColor: '#F8F9FA', flex: 1 },
   pageContent: { paddingBottom: 100 },
-  shell: { alignSelf: 'center', maxWidth: 1240, paddingHorizontal: 28, width: '100%' },
-  shellMobile: { paddingHorizontal: 18 },
+  shell: { alignSelf: 'center', marginLeft: Platform.OS === 'web' ? 232 : 0, maxWidth: 1280, paddingHorizontal: 36, width: '100%' },
+  shellMobile: { marginLeft: 0, paddingHorizontal: 18 },
   privacyHero: { marginTop: 38, maxWidth: 800 },
   privacyCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 20, borderWidth: 1, marginTop: 22, maxWidth: 920, padding: 26 },
   privacyLead: { color: '#415678', fontSize: 16, lineHeight: 25 },
@@ -550,7 +545,7 @@ const styles = StyleSheet.create({
   privacyText: { color: '#415678', fontSize: 14, lineHeight: 23, marginTop: 8 },
   privacyContact: { alignSelf: 'flex-start', backgroundColor: '#eaf3ff', borderRadius: 999, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
   privacyContactText: { color: '#1d4ea8', fontSize: 13, fontWeight: '800' },
-  sessionCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 18, borderWidth: 1, marginTop: 24, padding: 18 },
+  sessionCard: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 18, borderWidth: 1, marginTop: 24, padding: 18 },
   sessionEyebrow: { color: '#2d6cdf', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
   sessionTitle: { color: '#142950', fontSize: 22, fontWeight: '800', marginTop: 6 },
   sessionDescription: { color: '#5b6e8d', fontSize: 14, marginTop: 5 },
@@ -576,43 +571,42 @@ const styles = StyleSheet.create({
   timeThumb: { backgroundColor: '#ffffff', borderColor: '#2d6cdf', borderWidth: 3 },
   header: {
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#dfeaf7',
-    borderBottomWidth: 1,
-    borderRadius: 18,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 16,
-    marginTop: 18,
+    marginTop: 20,
     minHeight: 92,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    shadowColor: '#7a9bc4',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    paddingVertical: 10,
   },
+  headerMobile: { marginTop: 8, minHeight: 68, flexWrap: 'wrap' },
+  sidebar: { backgroundColor: '#ffffff', borderRightColor: '#e5e7eb', borderRightWidth: 1, bottom: 0, left: 0, paddingHorizontal: 18, paddingTop: 26, position: 'fixed' as never, top: 0, width: 232, zIndex: 50 },
+  sidebarMobile: { borderBottomColor: '#e5e7eb', borderBottomWidth: 1, borderRightWidth: 0, bottom: 'auto', flexDirection: 'row', height: 64, left: 0, paddingHorizontal: 14, paddingTop: 10, position: 'relative' as never, right: 0, top: 0, width: '100%' },
   brandPressable: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  brandLogo: { borderRadius: 14, height: 52, width: 52 },
+  brandLogo: { borderRadius: 12, height: 38, width: 38 },
+  mobileBrand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 12 },
+  mobileBrandLogo: { borderRadius: 8, height: 32, width: 32 },
+  mobileBrandText: { color: '#111827', fontSize: 17, fontWeight: '800' },
   brandTextWrap: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap' },
-  logo: { color: '#142950', fontSize: 22, fontWeight: '800', letterSpacing: 0.2 },
+  logo: { color: '#111827', fontSize: 19, fontWeight: '800', letterSpacing: 0.2 },
   tagline: { color: '#7d8ca3', fontSize: 11, marginTop: 2 },
-  nav: { alignItems: 'center', flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginHorizontal: 8 },
-  navItem: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  navItemActive: { backgroundColor: '#eaf3ff' },
-  navText: { color: '#415678', fontSize: 13, fontWeight: '600' },
-  navTextActive: { color: '#1d4ea8', fontWeight: '700' },
-  playerLinkButton: { borderColor: '#cfe0ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  playerLink: { color: '#1d4ea8', fontSize: 12, fontWeight: '700' },
+  nav: { gap: 7, marginTop: 42 },
+  navMobile: { flexDirection: 'row', flex: 1, gap: 2, marginLeft: 8, marginTop: 0, overflow: 'hidden' },
+  navItem: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 12 },
+  navItemActive: { backgroundColor: '#eaf2ff' },
+  navIcon: { color: '#6b7280', fontSize: 18, width: 22 },
+  navText: { color: '#4b5563', fontSize: 14, fontWeight: '600' },
+  navTextActive: { color: '#0052CC', fontWeight: '800' },
+  playerLinkButton: { borderColor: '#c7d8f8', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  playerLink: { color: '#0052CC', fontSize: 12, fontWeight: '700' },
   adminLinkButton: { paddingHorizontal: 12, paddingVertical: 8 },
   adminLinkText: { color: '#8598b8', fontSize: 12, fontWeight: '700' },
-  search: { alignItems: 'center', backgroundColor: '#eef4fd', borderRadius: 999, flexDirection: 'row', height: 46, paddingHorizontal: 16, width: 240 },
+  search: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', height: 46, maxWidth: 720, paddingHorizontal: 16 },
   searchMobile: { flexBasis: '100%', width: '100%' },
   searchIcon: { color: '#7d8ca3', fontSize: 18, marginRight: 8 },
-  searchInput: { color: '#142950', flex: 1, fontSize: 13, outlineStyle: 'none' as never },
+  searchInput: { color: '#111827', flex: 1, fontSize: 14, outlineStyle: 'none' as never },
   searchClear: { alignItems: 'center', backgroundColor: '#dbe6f6', borderRadius: 999, height: 20, justifyContent: 'center', marginRight: 6, width: 20 },
   searchClearText: { color: '#5b6e8d', fontSize: 11, fontWeight: '700' },
-  searchSubmit: { backgroundColor: '#2d6cdf', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  searchSubmit: { backgroundColor: '#0052CC', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
   searchSubmitText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   hero: {
     backgroundColor: '#edf5ff',
@@ -655,29 +649,34 @@ const styles = StyleSheet.create({
   shelf: { gap: 16, paddingVertical: 6 },
   recordingCard: {
     backgroundColor: '#ffffff',
-    borderColor: '#dfeaf7',
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: 12,
     overflow: 'hidden',
-    width: 204,
-    shadowColor: '#b9cfe8',
+    width: 216,
+    shadowColor: '#111827',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
   },
-  cardBody: { minHeight: 128, padding: 12 },
-  cardCategory: { color: '#2d6cdf', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  cardTitle: { color: '#142950', fontSize: 15, fontWeight: '700', lineHeight: 19, marginTop: 7 },
-  cardMeta: { color: '#6a7e9b', fontSize: 12, marginTop: 6 },
+  mediaPressable: { position: 'relative' },
+  mediaPressableActive: { opacity: 0.96 },
+  cardPlayOverlay: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 42, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -21 }, { translateY: -21 }], width: 42 },
+  cardPlayOverlayVisible: { opacity: 1 },
+  cardPlayIcon: { color: '#ffffff', fontSize: 15, marginLeft: 2 },
+  cardBody: { minHeight: 105, padding: 12 },
+  cardCategory: { color: '#0052CC', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  cardTitle: { color: '#111827', fontSize: 15, fontWeight: '800', lineHeight: 19, marginTop: 7 },
+  cardMeta: { color: '#6b7280', fontSize: 12, marginTop: 6 },
   cardDate: { color: '#6a7e9b', fontSize: 11, marginTop: 5 },
-  youtubeCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 14, borderWidth: 1, overflow: 'hidden', paddingBottom: 11, width: 236 },
-  youtubeThumbnail: { backgroundColor: '#d9e7ef', height: 132, overflow: 'hidden', position: 'relative', width: '100%' },
+  youtubeCard: { backgroundColor: '#ffffff', borderRadius: 12, overflow: 'hidden', paddingBottom: 11, width: 236 },
+  youtubeCardActive: { shadowColor: '#0052CC', shadowOpacity: 0.18, shadowRadius: 12 },
+  youtubeThumbnail: { aspectRatio: 16 / 9, backgroundColor: '#d9e7ef', overflow: 'hidden', position: 'relative', width: '100%' },
   youtubeFallback: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   youtubeFallbackText: { color: '#356078', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
-  youtubePlay: { backgroundColor: '#123b63', borderRadius: 7, bottom: 8, left: 8, paddingHorizontal: 9, paddingVertical: 5, position: 'absolute' },
-  youtubePlayText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  youtubeTitle: { color: '#142950', fontSize: 14, fontWeight: '800', lineHeight: 18, marginHorizontal: 12, marginTop: 10 },
-  youtubeMeta: { color: '#6a7e9b', fontSize: 11, marginHorizontal: 12, marginTop: 5 },
+  youtubePlay: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 44, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -22 }, { translateY: -22 }], width: 44 },
+  youtubePlayVisible: { opacity: 1 },
+  youtubePlayText: { color: '#fff', fontSize: 15, fontWeight: '800', marginLeft: 2 },
+  youtubeTitle: { color: '#111827', fontSize: 14, fontWeight: '800', lineHeight: 18, marginHorizontal: 12, marginTop: 10 },
+  youtubeMeta: { color: '#6b7280', fontSize: 11, marginHorizontal: 12, marginTop: 5 },
   cardSkip: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 7 },
   cardSkipText: { color: '#1d4ea8', fontSize: 10, fontWeight: '800' },
   cardActions: { alignItems: 'center', flexDirection: 'row', gap: 14 },
