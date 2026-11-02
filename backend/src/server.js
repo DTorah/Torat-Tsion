@@ -1124,14 +1124,37 @@ app.get('/auth/google/status', requireAdmin, async (_req, res) => {
   res.json(status);
 });
 app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
+  const result = {
+    configuredFolderId: folderId,
+    folderFormatValid: validId(folderId),
+    metadataAccessible: false,
+    folderName: null,
+    folderMimeType: null,
+    childrenAccessible: false,
+    childCount: 0,
+  };
   try {
     const drive = await getDrive();
-    const response = await drive.files.get({ fileId: folderId, fields: 'id,mimeType', supportsAllDrives: true });
-    const driveAccess = response.data.id === folderId && response.data.mimeType === driveFolderMimeType;
-    res.json({ driveAccess, ...(driveAccess ? {} : { error: 'Configured Drive folder is not accessible.' }) });
+    const response = await drive.files.get({ fileId: folderId, fields: 'id,name,mimeType', supportsAllDrives: true });
+    result.metadataAccessible = response.data.id === folderId;
+    result.folderName = response.data.name || null;
+    result.folderMimeType = response.data.mimeType || null;
+    if (result.metadataAccessible && result.folderMimeType === driveFolderMimeType) {
+      const children = await drive.files.list({
+        q: `'${folderId}' in parents and trashed = false`,
+        fields: 'files(id)',
+        pageSize: 1000,
+        spaces: 'drive',
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      });
+      result.childrenAccessible = true;
+      result.childCount = Array.isArray(children.data.files) ? children.data.files.length : 0;
+    }
+    res.json({ driveAccess: result.metadataAccessible && result.folderMimeType === driveFolderMimeType && result.childrenAccessible, ...result });
   } catch (error) {
-    console.error('Google OAuth diagnostic failed', safeErrorCode(error));
-    res.status(200).json({ driveAccess: false, error: 'Google Drive access could not be verified.' });
+    console.error('Google OAuth diagnostic failed', driveErrorDetails(error));
+    res.status(200).json({ driveAccess: false, ...result, error: 'Google Drive access could not be verified.' });
   }
 });
 app.get('/health', (_req, res) => res.json({
