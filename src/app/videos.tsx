@@ -40,7 +40,7 @@ function VideoCard({ video, onPlay }: { video: Video; onPlay: () => void }) {
       {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={styles.thumbnail} /> : <View style={[styles.thumbnail, styles.thumbnailFallback]}><Text style={styles.thumbnailFallbackText}>TORAT TSION</Text></View>}
       <View style={styles.playBadge}><Text style={styles.playIcon}>▶</Text></View>
     </View>
-    <View style={styles.videoCardBody}><Text numberOfLines={2} style={styles.videoTitle}>{video.title}</Text><Text style={styles.videoMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}{video.publishedAt ? ` · ${new Date(video.publishedAt).toLocaleDateString()}` : ''}</Text></View>
+    <View style={styles.videoCardBody}><Text numberOfLines={2} style={styles.videoTitle}>{video.title}</Text>{video.publishedAt ? <Text style={styles.videoMeta}>{new Date(video.publishedAt).toLocaleDateString()}</Text> : null}</View>
   </Pressable>;
 }
 
@@ -49,7 +49,7 @@ function VideoPlayerPanel({ video, onClose }: { video: Video; onClose: () => voi
     <View style={styles.panelHeader}><Text style={styles.panelEyebrow}>NOW PLAYING</Text><Pressable accessibilityLabel="Close video player" onPress={onClose} style={styles.closeButton}><Text style={styles.closeButtonText}>×</Text></Pressable></View>
     <YouTubeEmbed video={video} />
     <Text style={styles.playerTitle}>{video.title}</Text>
-    <Text style={styles.meta}>{video.sourceLabel || video.channelTitle || 'YouTube'}</Text>
+    {video.publishedAt ? <Text style={styles.meta}>{new Date(video.publishedAt).toLocaleDateString()}</Text> : null}
     {video.description ? <Text numberOfLines={4} style={styles.body}>{video.description}</Text> : null}
   </View>;
 }

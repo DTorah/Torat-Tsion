@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { Link as RouterLink, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
+import React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
@@ -14,6 +15,20 @@ import { ToratWelcome } from '@/components/torat-sections';
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
 const toratTsionLogo = require('@/assets/images/icon.png');
+
+function LineIcon({ name }: { name: 'home' | 'shiurim' | 'parsha' | 'rabbi' | 'donate' | 'library' | 'videos' | 'search' }) {
+  const paths = {
+    home: 'M3 10.5 12 3l9 7.5M5 9v11h14V9M9 20v-6h6v6',
+    shiurim: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Zm0 0v13a3 3 0 0 0 3 3M9 8h6M9 12h6',
+    parsha: 'M12 3a9 9 0 1 0 9 9M12 3v9h9',
+    rabbi: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0',
+    donate: 'M20.8 8.8c0 5.5-8.8 10.2-8.8 10.2S3.2 14.3 3.2 8.8A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.8 2.8Z',
+    library: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5',
+    videos: 'M4 5h16v14H4zM10 9l5 3-5 3V9Z',
+    search: 'm20 20-4.5-4.5M10.8 17a6.2 6.2 0 1 0 0-12.4 6.2 6.2 0 0 0 0 12.4Z',
+  } as const;
+  return Platform.OS === 'web' ? React.createElement('svg', { 'aria-hidden': true, fill: 'none', height: 20, viewBox: '0 0 24 24', width: 20, xmlns: 'http://www.w3.org/2000/svg' }, React.createElement('path', { d: paths[name], stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 1.7 })) : <Text style={styles.navIconFallback}>•</Text>;
+}
 
 function triggerDownload(recordingId: string, title: string) {
   if (typeof document === 'undefined') return;
@@ -78,14 +93,14 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
             const isActive = pathname === item.href || (item.href === '/' && pathname === '/');
             return (
               <Link key={item.href} href={item.href as never} asChild>
-                <Pressable accessibilityRole="link" style={StyleSheet.flatten([styles.navItem, isActive && styles.navItemActive])}>
-                  <Text style={styles.navIcon}>{item.label === 'Home' ? '⌂' : item.label === 'Shiurim' ? '◫' : item.label === 'Parsha' ? '◌' : item.label === 'Rabbi' ? '◉' : item.label === 'Donate' ? '♡' : '▣'}</Text>
+                <Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, isActive && styles.navItemActive, hovered && styles.navItemHover]}>
+                  <LineIcon name={item.label === 'Home' ? 'home' : item.label === 'Shiurim' ? 'shiurim' : item.label === 'Parsha' ? 'parsha' : item.label === 'Rabbi' ? 'rabbi' : item.label === 'Donate' ? 'donate' : 'library'} />
                   <Text style={[styles.navText, isActive && styles.navTextActive]}>{item.label}</Text>
                 </Pressable>
               </Link>
             );
           })}
-          <Link href="/videos" asChild><Pressable accessibilityRole="link" style={styles.navItem}><Text style={styles.navIcon}>▷</Text><Text style={styles.navText}>Videos</Text></Pressable></Link>
+          <Link href="/videos" asChild><Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, hovered && styles.navItemHover]}><LineIcon name="videos" /><Text style={styles.navText}>Videos</Text></Pressable></Link>
         </View>
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
       </View>
@@ -93,7 +108,7 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
       <View style={[styles.header, isMobile && styles.headerMobile]}>
         <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><Text style={styles.mobileBrandText}>Torat Sion</Text></View>
         <View style={styles.search}>
-        <Text style={styles.searchIcon}>⌕</Text>
+        <Pressable accessibilityLabel="Submit search" onPress={submitSearch} style={styles.searchIcon}><LineIcon name="search" /></Pressable>
         <TextInput
           accessibilityLabel="Search shiurim"
           onChangeText={setQuery}
@@ -108,9 +123,6 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
             <Text style={styles.searchClearText}>✕</Text>
           </Pressable>
         )}
-        <Pressable accessibilityLabel="Search" onPress={submitSearch} style={styles.searchSubmit}>
-          <Text style={styles.searchSubmitText}>Search</Text>
-        </Pressable>
         </View>
         {activeRecording && <Pressable accessibilityLabel="Open now playing" onPress={() => router.push('/player' as never)} style={styles.playerLinkButton}><Text style={styles.playerLink}>Now playing</Text></Pressable>}
       </View>
@@ -263,7 +275,7 @@ function Shelf({ title, recordings, link, prominent = false }: { title: string; 
 
 function YouTubeShelf({ source }: { source: YouTubeSource }) {
   if (!source.videos.length) return null;
-  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={({ hovered }) => [styles.youtubeCard, hovered && styles.youtubeCardActive]}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text><Text numberOfLines={1} style={styles.youtubeMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}</Text></Pressable></Link>)}</ScrollView></View>;
+  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={({ hovered }) => [styles.youtubeCard, hovered && styles.youtubeCardActive]}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text></Pressable></Link>)}</ScrollView></View>;
 }
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
@@ -441,7 +453,7 @@ export function PublicHome() {
     <PublicHeader query={query} setQuery={setQuery} />
     <ToratWelcome />
     <YouTubeHomeSection error={youtubeError} loading={youtubeLoading} sources={youtubeSources} />
-    {loading ? <View style={styles.state}><ActivityIndicator color="#2d6cdf" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateTitle}>The library is unavailable</Text><Text style={styles.stateText}>{error}</Text></View> : <>
+    {loading ? <View style={styles.state}><ActivityIndicator color="#0052CC" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateText}>{error}</Text></View> : <>
       <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
       <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
       <Shelf title="Kol Halashon Recordings" recordings={kolHalashonRecordings} link="/explore" />
@@ -593,7 +605,8 @@ const styles = StyleSheet.create({
   navMobile: { flexDirection: 'row', flex: 1, gap: 2, marginLeft: 8, marginTop: 0, overflow: 'hidden' },
   navItem: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 12 },
   navItemActive: { backgroundColor: '#eaf2ff' },
-  navIcon: { color: '#6b7280', fontSize: 18, width: 22 },
+  navIconFallback: { color: '#6b7280', fontSize: 18, width: 22 },
+  navItemHover: { backgroundColor: '#f1f5f9' },
   navText: { color: '#4b5563', fontSize: 14, fontWeight: '600' },
   navTextActive: { color: '#0052CC', fontWeight: '800' },
   playerLinkButton: { borderColor: '#c7d8f8', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
@@ -602,7 +615,7 @@ const styles = StyleSheet.create({
   adminLinkText: { color: '#8598b8', fontSize: 12, fontWeight: '700' },
   search: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', height: 46, maxWidth: 720, paddingHorizontal: 16 },
   searchMobile: { flexBasis: '100%', width: '100%' },
-  searchIcon: { color: '#7d8ca3', fontSize: 18, marginRight: 8 },
+  searchIcon: { alignItems: 'center', color: '#6b7280', justifyContent: 'center', marginRight: 8 },
   searchInput: { color: '#111827', flex: 1, fontSize: 14, outlineStyle: 'none' as never },
   searchClear: { alignItems: 'center', backgroundColor: '#dbe6f6', borderRadius: 999, height: 20, justifyContent: 'center', marginRight: 6, width: 20 },
   searchClearText: { color: '#5b6e8d', fontSize: 11, fontWeight: '700' },
@@ -626,7 +639,7 @@ const styles = StyleSheet.create({
   featuredPlay: { alignSelf: 'flex-start', backgroundColor: '#142950', borderRadius: 10, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
   featuredPlayText: { color: '#ffffff', fontSize: 12, fontWeight: '800' },
   heroMobile: { flexDirection: 'column' },
-  cover: { backgroundColor: '#dfeaf7', height: 154, width: 154 },
+  cover: { aspectRatio: 16 / 9, backgroundColor: '#e5e7eb', height: 121, width: '100%' },
   coverLarge: { height: '100%', minHeight: 250, width: '34%' },
   coverLargeMobile: { minHeight: 210, width: '100%' },
   coverFallback: { alignItems: 'center', backgroundColor: '#edf5ff', justifyContent: 'center' },
