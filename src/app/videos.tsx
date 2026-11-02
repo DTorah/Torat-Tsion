@@ -38,7 +38,7 @@ function VideoCard({ video, onPlay }: { video: Video; onPlay: () => void }) {
   return <Pressable accessibilityLabel={`Play ${video.title}`} onPress={onPlay} style={styles.videoCard}>
     <View style={styles.thumbnailWrap}>
       {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={styles.thumbnail} /> : <View style={[styles.thumbnail, styles.thumbnailFallback]}><Text style={styles.thumbnailFallbackText}>TORAT TSION</Text></View>}
-      <View style={styles.playBadge}><Text style={styles.playIcon}>▶</Text><Text style={styles.playText}>Play</Text></View>
+      <View style={styles.playBadge}><Text style={styles.playIcon}>▶</Text></View>
     </View>
     <View style={styles.videoCardBody}><Text numberOfLines={2} style={styles.videoTitle}>{video.title}</Text><Text style={styles.videoMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}{video.publishedAt ? ` · ${new Date(video.publishedAt).toLocaleDateString()}` : ''}</Text></View>
   </Pressable>;
@@ -124,9 +124,8 @@ const styles = StyleSheet.create({
   thumbnail: { height: '100%', width: '100%' },
   thumbnailFallback: { alignItems: 'center', justifyContent: 'center' },
   thumbnailFallbackText: { color: '#356078', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  playBadge: { alignItems: 'center', backgroundColor: '#123b63', borderRadius: 8, bottom: 10, flexDirection: 'row', gap: 5, left: 10, paddingHorizontal: 10, paddingVertical: 6, position: 'absolute' },
-  playIcon: { color: '#fff', fontSize: 11 },
-  playText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  playBadge: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 44, justifyContent: 'center', left: '50%', position: 'absolute', top: '50%', transform: [{ translateX: -22 }, { translateY: -22 }], width: 44 },
+  playIcon: { color: '#fff', fontSize: 15, marginLeft: 2 },
   videoCardBody: { minHeight: 88, padding: 13 },
   videoTitle: { color: '#123b63', fontSize: 15, fontWeight: '800', lineHeight: 20 },
   videoMeta: { color: '#7890a3', fontSize: 12, marginTop: 8 },
