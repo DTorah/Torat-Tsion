@@ -1138,6 +1138,7 @@ app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
   const result = {
     configuredFolderId: folderId,
     folderFormatValid: validId(folderId),
+    oauthEmail: null,
     metadataAccessible: false,
     folderName: null,
     folderMimeType: null,
@@ -1146,6 +1147,8 @@ app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
   };
   try {
     const drive = await getDrive();
+    const about = await drive.about.get({ fields: 'user(emailAddress)' });
+    result.oauthEmail = about.data.user?.emailAddress || null;
     const response = await drive.files.get({ fileId: folderId, fields: 'id,name,mimeType', supportsAllDrives: true });
     result.metadataAccessible = response.data.id === folderId;
     result.folderName = response.data.name || null;

@@ -7,6 +7,7 @@ const stageTwo = [['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis
 type DriveDiagnostic = {
   configuredFolderId?: string;
   folderFormatValid?: boolean;
+  oauthEmail?: string | null;
   metadataAccessible?: boolean;
   folderName?: string | null;
   folderMimeType?: string | null;
@@ -72,6 +73,7 @@ export default function AdminDashboard() {
           <View style={styles.diagnosticGrid}>
             <Diagnostic label="Folder ID" value={driveDiagnostic.configuredFolderId || 'Unavailable'} />
             <Diagnostic label="Folder format" value={driveDiagnostic.folderFormatValid ? 'Valid' : 'Invalid'} />
+            <Diagnostic label="OAuth account" value={driveDiagnostic.oauthEmail || 'Unavailable'} />
             <Diagnostic label="Metadata access" value={driveDiagnostic.metadataAccessible ? 'Accessible' : 'Unavailable'} />
             <Diagnostic label="Folder" value={driveDiagnostic.folderName || 'Unavailable'} />
             <Diagnostic label="Child listing" value={driveDiagnostic.childrenAccessible ? `Accessible (${driveDiagnostic.childCount ?? 0} shown)` : 'Unavailable'} />
