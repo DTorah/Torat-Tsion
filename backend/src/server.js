@@ -35,7 +35,9 @@ function writeStreamToFile(stream, filePath) {
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
-const folderId = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || '1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b';
+const toratTsionDriveFolderId = '1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b';
+const toratTsionDriveFolderName = 'Torat Sion';
+const folderId = process.env.TORAT_TSION_DRIVE_FOLDER_ID?.trim() || toratTsionDriveFolderId;
 const dataDirectory = process.env.TORAT_TSION_DATA_DIR || path.join('/tmp', 'torat-tsion-data');
 const coversDirectory = path.join(dataDirectory, 'covers');
 const mappingPath = path.join(dataDirectory, 'covers.json');
@@ -653,7 +655,7 @@ function invalidateRecordingDiscovery() {
 }
 
 async function assertFolderUnderRoot(requestedFolderId) {
-  if (requestedFolderId === folderId) return { id: folderId, name: 'Recordings', parentId: null };
+  if (requestedFolderId === folderId) return { id: folderId, name: toratTsionDriveFolderName, parentId: null };
   const drive = await getDrive();
   const initial = await drive.files.get({ fileId: requestedFolderId, fields: 'id,name,mimeType,parents', supportsAllDrives: true });
   if (initial.data.mimeType !== driveFolderMimeType) throw new Error('not a recordings folder');
@@ -1250,7 +1252,7 @@ app.get('/api/admin/drive/folders', requireAdmin, async (_req, res) => {
   try {
     assertDriveConfigured();
     const folders = await listDriveFolderTree();
-    res.json({ root: { id: folderId, name: 'Recordings', parentId: null, children: folders } });
+    res.json({ root: { id: folderId, name: toratTsionDriveFolderName, parentId: null, children: folders } });
   } catch (error) {
     console.error('admin Drive folder load failed', safeErrorCode(error));
     res.status(safeErrorCode(error) === 'drive_authorization' ? 403 : 500).json({ error: 'Unable to load Google Drive folders', code: safeErrorCode(error) });

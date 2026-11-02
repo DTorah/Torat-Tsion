@@ -12,7 +12,7 @@ Copy `backend/.env.example` to a server-side environment configuration. Do not c
 - `YOUTUBE_API_KEY`: optional server-only YouTube Data API v3 key. Restrict it to YouTube Data API v3 in Google Cloud.
 - `YOUTUBE_BAKHSHI_CHANNEL_ID`, `YOUTUBE_BAKHSHI_PLAYLIST_ID`: optional IDs for the Rabbi Bakhshi source. Existing `YOUTUBE_CHANNEL_ID` and `YOUTUBE_PLAYLIST_ID` values remain supported as aliases.
 - `YOUTUBE_SHABBAT_SHALOM_CHANNEL_ID`, `YOUTUBE_SHABBAT_SHALOM_PLAYLIST_ID`: optional IDs for the Shabbat Shalom source. If channel IDs are omitted, the backend resolves the supplied official username/handle through the YouTube Data API.
-- `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b` (the Torat Tsion root folder).
+- `TORAT_TSION_DRIVE_FOLDER_ID`: `1JZfz7efCHWW8GbjxQ2LOkU7T0ZUy_c8b` (the `Torat Sion` root folder; audio files are read directly from this folder).
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`: server-only admin settings. Use a random session secret of at least 32 bytes.
 - `GITHUB_CONTENTS_TOKEN`: server-only fine-grained GitHub token with **Contents: Read and write** access to `GITHUB_CONTENTS_REPOSITORY`. When configured, it stores CMS content and uploaded covers on the `GITHUB_CONTENTS_BRANCH` branch.
 - `GITHUB_CONTENTS_REPOSITORY`: separate repository for durable Torat Tsion CMS content.
