@@ -270,6 +270,14 @@ function YouTubeShelf({ source }: { source: YouTubeSource }) {
   return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={styles.youtubeCard}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶ Play</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text><Text numberOfLines={1} style={styles.youtubeMeta}>{video.channelTitle || video.sourceLabel || 'YouTube'}</Text></Pressable></Link>)}</ScrollView></View>;
 }
 
+function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
+  if (loading) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><ActivityIndicator color="#2d6cdf" /><Text style={styles.stateText}>Loading official YouTube classes</Text></View></View>;
+  if (error) return <View style={styles.section}><SectionTitle title="YouTube Classes" link="/videos" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>YouTube classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
+  const visibleSources = sources.filter((source) => source.videos.length > 0);
+  if (!visibleSources.length) return <View style={styles.section}><SectionTitle title="YouTube Classes" link="/videos" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public YouTube classes are available right now.</Text></View></View>;
+  return <>{visibleSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}</>;
+}
+
 function useCountdownLabel(countdownAt?: string | null) {
   const [label, setLabel] = useState<string | null>(null);
   useEffect(() => {
@@ -393,6 +401,8 @@ export function PublicHome() {
   const [loading, setLoading] = useState(true);
   const { positions } = useListener();
   const [youtubeSources, setYoutubeSources] = useState<YouTubeSource[]>([]);
+  const [youtubeLoading, setYoutubeLoading] = useState(true);
+  const [youtubeError, setYoutubeError] = useState<string | null>(null);
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
   const fullHomeRequested = useRef(false);
@@ -400,7 +410,15 @@ export function PublicHome() {
   const folderId = Array.isArray(folderParam) ? folderParam[0] : folderParam;
   useEffect(() => setHydrated(true), []);
   useEffect(() => { if (folderId) return; fetchPublicJson<HomePayload>('/api/home?summary=1').then(setPayload).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load the library')).finally(() => setLoading(false)); }, [folderId]);
-  useEffect(() => { if (folderId) return; fetchPublicJson<{ sources?: YouTubeSource[] }>('/api/videos').then((value) => setYoutubeSources(value.sources || [])).catch(() => setYoutubeSources([])); }, [folderId]);
+  useEffect(() => {
+    if (folderId) return;
+    setYoutubeLoading(true);
+    setYoutubeError(null);
+    fetchPublicJson<{ sources?: YouTubeSource[] }>('/api/videos')
+      .then((value) => setYoutubeSources(value.sources || []))
+      .catch((reason) => setYoutubeError(reason instanceof Error ? reason.message : 'Unable to load YouTube classes'))
+      .finally(() => setYoutubeLoading(false));
+  }, [folderId]);
   const router = useRouter();
   const loadRemainingHome = () => {
     if (fullHomeRequested.current) return;
@@ -421,10 +439,10 @@ export function PublicHome() {
   }}><View style={[styles.shell, isNarrow && styles.shellMobile]}>
     <PublicHeader query={query} setQuery={setQuery} />
     <ToratWelcome />
+    <YouTubeHomeSection error={youtubeError} loading={youtubeLoading} sources={youtubeSources} />
     {loading ? <View style={styles.state}><ActivityIndicator color="#2d6cdf" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateTitle}>The library is unavailable</Text><Text style={styles.stateText}>{error}</Text></View> : <>
       <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
       <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
-      {youtubeSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}
 
       {/* TOP: content carousel — live/upcoming when curated by Admin, otherwise recently added */}
       {Boolean(payload?.carousel?.length) && <View style={styles.section}><SectionTitle title="Live & Recent" /><ContentCarousel items={payload?.carousel || []} /></View>}
@@ -688,6 +706,7 @@ const styles = StyleSheet.create({
   pageTitle: { color: '#142950', fontSize: 42, fontWeight: '800', marginTop: 8 },
   pageDescription: { color: '#5b6e8d', fontSize: 15, lineHeight: 23, marginTop: 12, maxWidth: 650 },
   state: { alignItems: 'center', minHeight: 360, justifyContent: 'center' },
+  youtubeState: { alignItems: 'flex-start', backgroundColor: '#f7fbfd', borderColor: '#dfeaf7', borderRadius: 16, borderWidth: 1, minHeight: 92, justifyContent: 'center', padding: 18 },
   stateTitle: { color: '#142950', fontSize: 24, fontWeight: '800', marginTop: 15 },
   stateText: { color: '#5b6e8d', fontSize: 14, marginTop: 12, textAlign: 'center' },
 });
