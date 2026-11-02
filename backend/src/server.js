@@ -1153,8 +1153,17 @@ app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
     }
     res.json({ driveAccess: result.metadataAccessible && result.folderMimeType === driveFolderMimeType && result.childrenAccessible, ...result });
   } catch (error) {
-    console.error('Google OAuth diagnostic failed', driveErrorDetails(error));
-    res.status(200).json({ driveAccess: false, ...result, error: 'Google Drive access could not be verified.' });
+    const details = driveErrorDetails(error);
+    console.error('Google OAuth diagnostic failed', details);
+    res.status(200).json({
+      driveAccess: false,
+      ...result,
+      error: 'Google Drive access could not be verified.',
+      errorCode: details.code,
+      errorStatus: details.status,
+      errorReason: details.reason,
+      errorMessage: details.message,
+    });
   }
 });
 app.get('/health', (_req, res) => res.json({
