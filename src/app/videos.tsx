@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { apiUrl } from '@/lib/api';
 import { ahavatShalomYouTubeUrl, kolHalashonUrl, shabbatShalomYouTubeUrl } from '@/lib/site';
 
@@ -43,6 +43,16 @@ function VideoCard({ video, onPlay }: { video: Video; onPlay: () => void }) {
   </Pressable>;
 }
 
+function VideoPlayerPanel({ video, onClose }: { video: Video; onClose: () => void }) {
+  return <View style={styles.playerPanel}>
+    <View style={styles.panelHeader}><Text style={styles.panelEyebrow}>NOW PLAYING</Text><Pressable accessibilityLabel="Close video player" onPress={onClose} style={styles.closeButton}><Text style={styles.closeButtonText}>×</Text></Pressable></View>
+    <YouTubeEmbed video={video} />
+    <Text style={styles.playerTitle}>{video.title}</Text>
+    <Text style={styles.meta}>{video.sourceLabel || video.channelTitle || 'YouTube'}</Text>
+    {video.description ? <Text numberOfLines={4} style={styles.body}>{video.description}</Text> : null}
+  </View>;
+}
+
 export default function VideosScreen() {
   const { video: requestedVideo } = useLocalSearchParams<{ video?: string }>();
   const [payload, setPayload] = useState<VideoPayload | null>(null);
@@ -50,6 +60,7 @@ export default function VideosScreen() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
   useEffect(() => {
     fetch(apiUrl('/api/videos'))
       .then(async (response) => {
@@ -66,12 +77,18 @@ export default function VideosScreen() {
     ...source,
     videos: source.videos.filter((video) => !normalizedQuery || `${video.title} ${video.description} ${video.channelTitle || ''}`.toLowerCase().includes(normalizedQuery)),
   })), [normalizedQuery, payload?.sources]);
+  const isNarrow = width < 900;
   return <ScrollView contentContainerStyle={styles.page}>
     <View style={styles.hero}><Text style={styles.eyebrow}>TORAT TSION · YOUTUBE VIDEOS</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Watch real classes from Rabbi Isaac Bakhshi and the Shabbat Shalom channel without leaving Torat Tsion. Choose a class below to play it in the embedded YouTube player.</Text><TextInput accessibilityLabel="Search YouTube videos" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
-    {loading ? <Text style={styles.body}>Loading official YouTube classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>YouTube playback is not configured</Text><Text style={styles.body}>The backend needs the server-only environment variable {payload?.missing?.join(', ') || 'YOUTUBE_API_KEY'} in Render. No placeholder videos are shown.</Text></View> : selectedVideo && <View style={styles.playerCard}><YouTubeEmbed video={selectedVideo} /><Text style={styles.playerTitle}>{selectedVideo.title}</Text><Text style={styles.meta}>{selectedVideo.sourceLabel || selectedVideo.channelTitle || 'YouTube'}</Text><Text numberOfLines={4} style={styles.body}>{selectedVideo.description}</Text><Pressable onPress={() => Linking.openURL(selectedVideo.watchUrl)} style={styles.externalButton}><Text style={styles.externalButtonText}>Watch on YouTube</Text></Pressable></View>}
-    {!loading && !error && payload?.configured && sources.map((source) => <View key={source.key} style={styles.sourceSection}><View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>OFFICIAL SOURCE</Text><Text style={styles.sectionTitle}>{source.label}</Text></View>{source.url && <Pressable onPress={() => Linking.openURL(source.url as string)}><Text style={styles.sourceLink}>View channel</Text></Pressable>}</View>{source.videos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videoRow}>{source.videos.map((video) => <VideoCard key={video.id} video={video} onPlay={() => setSelectedVideo(video)} />)}</ScrollView> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes in this source.' : 'No public videos were returned from this source yet.'}</Text>}</View>)}
-    {!loading && !error && payload?.configured && !sources.some((source) => source.videos.length > 0) && <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public videos were returned from either source yet.'}</Text>}
-    <View style={styles.notice}><Text style={styles.noticeTitle}>More official learning</Text><Text style={styles.body}>You can also explore the verified channel pages directly. YouTube content is embedded from YouTube and is never downloaded or re-hosted by Torat Tsion.</Text><View style={styles.actions}><Pressable onPress={() => Linking.openURL(ahavatShalomYouTubeUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Rabbi Bakhshi channel</Text></Pressable><Pressable onPress={() => Linking.openURL(shabbatShalomYouTubeUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Shabbat Shalom channel</Text></Pressable><Pressable onPress={() => Linking.openURL(kolHalashonUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Open Kol Halashon</Text></Pressable></View></View>
+    <View style={[styles.contentLayout, isNarrow && styles.contentLayoutNarrow]}>
+      <View style={styles.videoContent}>
+        {loading ? <Text style={styles.body}>Loading official YouTube classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>YouTube playback is not configured</Text><Text style={styles.body}>The backend needs the server-only environment variable {payload?.missing?.join(', ') || 'YOUTUBE_API_KEY'} in Render. No placeholder videos are shown.</Text></View> : null}
+        {!loading && !error && payload?.configured && sources.map((source) => <View key={source.key} style={styles.sourceSection}><View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>OFFICIAL SOURCE</Text><Text style={styles.sectionTitle}>{source.label}</Text></View>{source.url && <Pressable onPress={() => Linking.openURL(source.url as string)}><Text style={styles.sourceLink}>View channel</Text></Pressable>}</View>{source.videos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videoRow}>{source.videos.map((video) => <VideoCard key={video.id} video={video} onPlay={() => setSelectedVideo(video)} />)}</ScrollView> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes in this source.' : 'No public videos were returned from this source yet.'}</Text>}</View>)}
+        {!loading && !error && payload?.configured && !sources.some((source) => source.videos.length > 0) && <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public videos were returned from either source yet.'}</Text>}
+        <View style={styles.notice}><Text style={styles.noticeTitle}>More official learning</Text><Text style={styles.body}>You can also explore the verified channel pages directly. YouTube content is embedded from YouTube and is never downloaded or re-hosted by Torat Tsion.</Text><View style={styles.actions}><Pressable onPress={() => Linking.openURL(ahavatShalomYouTubeUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Rabbi Bakhshi channel</Text></Pressable><Pressable onPress={() => Linking.openURL(kolHalashonUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Open Kol Halashon</Text></Pressable></View></View>
+      </View>
+      {selectedVideo && <VideoPlayerPanel onClose={() => setSelectedVideo(null)} video={selectedVideo} />}
+    </View>
   </ScrollView>;
 }
 
@@ -82,7 +99,14 @@ const styles = StyleSheet.create({
   title: { color: '#102a43', fontSize: 38, fontWeight: '800', marginTop: 12 },
   body: { color: '#486581', fontSize: 16, lineHeight: 25, marginTop: 14 },
   searchInput: { backgroundColor: '#fff', borderColor: '#b8d7e6', borderRadius: 10, borderWidth: 1, color: '#102a43', fontSize: 15, marginTop: 22, maxWidth: 560, paddingHorizontal: 15, paddingVertical: 13 },
-  playerCard: { backgroundColor: '#fff', borderColor: '#b8d7e6', borderRadius: 16, borderWidth: 1, maxWidth: 900, overflow: 'hidden', padding: 18 },
+  contentLayout: { alignItems: 'flex-start', flexDirection: 'row', gap: 22 },
+  contentLayoutNarrow: { flexDirection: 'column' },
+  videoContent: { flex: 1, minWidth: 0 },
+  playerPanel: { backgroundColor: '#fff', borderColor: '#b8d7e6', borderRadius: 16, borderWidth: 1, maxWidth: 420, overflow: 'hidden', padding: 18, width: '100%' },
+  panelHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  panelEyebrow: { color: '#147d89', fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
+  closeButton: { alignItems: 'center', borderColor: '#b8d7e6', borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
+  closeButtonText: { color: '#123b63', fontSize: 24, lineHeight: 26 },
   embedWrap: { aspectRatio: 16 / 9, backgroundColor: '#102a43', overflow: 'hidden', width: '100%' },
   playerTitle: { color: '#123b63', fontSize: 23, fontWeight: '800', marginTop: 16 },
   meta: { color: '#147d89', fontSize: 13, marginTop: 7 },

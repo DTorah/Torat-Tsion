@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { getShiurSkipSeconds, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
 import { normalizeRecordingTitle } from '@/lib/recording-title';
+import { inferRecordingCategory } from '@/lib/recording-category';
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
@@ -151,7 +152,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
       </Link>
 
       <View style={styles.cardBody}>
-        <Text style={styles.cardCategory}>{recording.category || 'Torah'}</Text>
+        <Text style={styles.cardCategory}>{inferRecordingCategory(recording.title || recording.name, recording.category)}</Text>
         <Text numberOfLines={4} style={styles.cardTitle}>{normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}</Text>
         <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torat Tsion'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
         <View style={styles.cardActions}>
@@ -276,6 +277,10 @@ function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSourc
   const visibleSources = sources.filter((source) => source.videos.length > 0);
   if (!visibleSources.length) return <View style={styles.section}><SectionTitle title="YouTube Classes" link="/videos" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public YouTube classes are available right now.</Text></View></View>;
   return <>{visibleSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}</>;
+}
+
+function isKolHalashonRecording(recording: Recording) {
+  return /kol\s+halashon/i.test(`${recording.title || ''} ${recording.name} ${recording.rabbiName || ''}`);
 }
 
 function useCountdownLabel(countdownAt?: string | null) {
@@ -431,6 +436,7 @@ export function PublicHome() {
   const recordings = payload?.recordings || [];
   const continueListening = useMemo(() => Object.keys(positions).sort((a, b) => positions[b] - positions[a]).map((id) => recordings.find((recording) => recording.id === id)).filter((recording): recording is Recording => Boolean(recording)), [positions, recordings]);
   const featuredShiurim = payload?.featuredShiurim || [];
+  const kolHalashonRecordings = recordings.filter(isKolHalashonRecording);
   if (folderId) return <PublicFolderView folderId={folderId} />;
   const isNarrow = hydrated && width < 600;
   return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent} scrollEventThrottle={500} onScroll={({ nativeEvent }) => {
@@ -443,6 +449,7 @@ export function PublicHome() {
     {loading ? <View style={styles.state}><ActivityIndicator color="#2d6cdf" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateTitle}>The library is unavailable</Text><Text style={styles.stateText}>{error}</Text></View> : <>
       <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
       <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
+      <Shelf title="Kol Halashon Recordings" recordings={kolHalashonRecordings} link="/explore" />
 
       {/* TOP: content carousel — live/upcoming when curated by Admin, otherwise recently added */}
       {Boolean(payload?.carousel?.length) && <View style={styles.section}><SectionTitle title="Live & Recent" /><ContentCarousel items={payload?.carousel || []} /></View>}
