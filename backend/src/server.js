@@ -343,6 +343,12 @@ function youtubeVideoId(value) {
   return /^[A-Za-z0-9_-]{11}$/.test(String(value || '')) ? String(value) : null;
 }
 
+function youtubeDurationSeconds(value) {
+  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i.exec(String(value || ''));
+  if (!match) return null;
+  return (Number(match[1] || 0) * 3600) + (Number(match[2] || 0) * 60) + Number(match[3] || 0);
+}
+
 async function youtubeRequest(resource, params) {
   const query = new URLSearchParams({ ...params, key: youtubeApiKey });
   const response = await fetch(`https://www.googleapis.com/youtube/v3/${resource}?${query}`);
@@ -442,6 +448,7 @@ async function youtubeVideos(query = '') {
           publishedAt: snippet.publishedAt || null,
           channelTitle: String(snippet.channelTitle || resolved.resolvedChannelTitle || source.label),
           thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
+          durationSeconds: youtubeDurationSeconds(detail?.contentDetails?.duration),
           watchUrl: `https://www.youtube.com/watch?v=${id}`,
           embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
           source: 'YouTube',
