@@ -11,6 +11,7 @@ import { inferRecordingCategories } from '@/lib/recording-category';
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
+import { VideoShowcase } from '@/components/video-showcase';
 
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
@@ -49,7 +50,7 @@ type Rabbi = { id: string; name: string; description?: string; photoUrl?: string
 type Category = { id: string; name: string; description?: string };
 type CarouselItem = { id: string; kind: string; title: string; subtitle?: string; coverUrl?: string | null; recordingId?: string | null; countdownAt?: string | null; link?: string | null };
 type HomePayload = { recordings?: Recording[]; folders?: DriveFolder[]; rabbis?: Rabbi[]; categories?: Category[]; featuredShiurim?: Recording[]; newThisWeek?: Recording[]; trending?: Recording[]; carousel?: CarouselItem[] };
-type YouTubeVideo = { id: string; title: string; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; watchUrl: string };
+type YouTubeVideo = { id: string; title: string; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; embedUrl: string };
 type YouTubeSource = { key: string; label: string; videos: YouTubeVideo[] };
 type FolderPayload = { folder?: DriveFolder; recordings?: Recording[]; folders?: DriveFolder[]; error?: string };
 type MinyanPreview = { name: string; time: string; location?: string; day?: string };
@@ -287,7 +288,7 @@ function Shelf({ title, recordings, link, prominent = false }: { title: string; 
 
 function YouTubeShelf({ source }: { source: YouTubeSource }) {
   if (!source.videos.length) return null;
-  return <View style={styles.section}><SectionTitle title={`${source.label} — YouTube`} link="/videos" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{source.videos.slice(0, 8).map((video) => <Link key={video.id} href={`/videos?video=${encodeURIComponent(video.id)}` as never} asChild><Pressable style={({ hovered }) => [styles.youtubeCard, hovered && styles.youtubeCardActive]}><View style={styles.youtubeThumbnail}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={StyleSheet.absoluteFill} /> : <View style={styles.youtubeFallback}><Text style={styles.youtubeFallbackText}>YOUTUBE</Text></View>}<View style={styles.youtubePlay}><Text style={styles.youtubePlayText}>▶</Text></View></View><Text numberOfLines={2} style={styles.youtubeTitle}>{video.title}</Text></Pressable></Link>)}</ScrollView></View>;
+  return <View style={styles.section}><VideoShowcase title={`${source.label} — YouTube`} videos={source.videos.slice(0, 8)} /></View>;
 }
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
