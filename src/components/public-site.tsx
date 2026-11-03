@@ -1,17 +1,18 @@
 import { Image } from 'expo-image';
 import { Link as RouterLink, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getShiurSkipSeconds, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
 import { normalizeRecordingTitle } from '@/lib/recording-title';
-import { inferRecordingCategories } from '@/lib/recording-category';
+import { matchesAdminCategory } from '@/lib/recording-category';
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
 import { VideoShowcase } from '@/components/video-showcase';
+import { donationUrl } from '@/lib/site';
 
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
@@ -60,7 +61,7 @@ function Cover({ recording, large = false, mobile = false }: { recording: Record
   return recording.coverUrl ? <Image contentFit="cover" source={{ uri: apiUrl(recording.coverUrl) }} style={coverStyle} /> : <View style={StyleSheet.flatten([coverStyle, styles.coverFallback])}><Image source={neutralCover} style={styles.coverLogo} /><Text style={styles.coverCaption}>Audio recording</Text></View>;
 }
 
-export function PublicHeader({ query, setQuery }: { query: string; setQuery: (value: string) => void }) {
+export function PublicHeader({ query, setQuery, onSubmit }: { query: string; setQuery: (value: string) => void; onSubmit?: (value: string) => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const { activeRecording } = useListener();
@@ -78,17 +79,14 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
   const isMobile = hydrated && width < 760;
   const submitSearch = () => {
     const normalizedQuery = query.trim();
-    if (normalizedQuery) router.push(`/search?q=${encodeURIComponent(normalizedQuery)}` as never);
+    if (normalizedQuery) onSubmit ? onSubmit(normalizedQuery) : router.push(`/search?q=${encodeURIComponent(normalizedQuery)}` as never);
+  };
+  const openDonation = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(donationUrl);
+    else void Linking.openURL(donationUrl);
   };
   const navItems = [
     { href: '/', label: 'Home' },
-    { href: '/explore', label: 'Shiurim' },
-    { href: '/parsha', label: 'Parsha' },
-    { href: '/rabbis/bakhshi', label: 'Rabbi' },
-    { href: '/donate', label: 'Donate' },
-    { href: '/favorites', label: 'Library' },
-    { href: '/minyanim', label: 'Minyan Times' },
-    { href: '/categories', label: 'Topics' },
   ] as const;
 
   return (
@@ -112,9 +110,9 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
               </Link>
             );
           })}
-          <Link href="/videos" asChild><Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, hovered && styles.navItemHover]}><LineIcon name="videos" /><Text style={styles.navText}>Videos</Text></Pressable></Link>
+          <Pressable accessibilityRole="link" accessibilityLabel="Donate to TorahHelp" onPress={openDonation} style={({ hovered }) => [styles.navItem, styles.donateNavItem, hovered && styles.navItemHover]}><LineIcon name="donate" /><Text style={styles.navText}>Donate</Text></Pressable>
         </View>
-        {!isMobile && <Link href="/minyanim" asChild><Pressable accessibilityRole="link" style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</Pressable></Link>}
+        {!isMobile && <View style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</View>}
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
       </View>
 
@@ -144,7 +142,7 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
 }
 
 function SectionTitle({ title, link }: { title: string; link?: string }) {
-  return <View style={styles.sectionTitleRow}><Text style={styles.sectionTitle}>{title}</Text>{link && <Link href={link as never}><Text style={styles.viewAll}>View all</Text></Link>}</View>;
+  return <View style={styles.sectionTitleRow}><Text numberOfLines={1} style={styles.sectionTitle}>{title}</Text>{link && <Link href={link as never}><Text style={styles.viewAll}>View All</Text></Link>}</View>;
 }
 
 function RecordingCard({ recording }: { recording: Recording }) {
@@ -172,7 +170,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
       </Link>
 
       <View style={styles.cardBody}>
-        <Text style={styles.cardCategory}>{inferRecordingCategories(recording.title || recording.name, recording.category)[0] || 'Torah'}</Text>
+        <Text style={styles.cardCategory}>{recording.category || 'Torah'}</Text>
         <Text numberOfLines={4} style={styles.cardTitle}>{normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}</Text>
         <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torat Tsion'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
         <View style={styles.cardActions}>
@@ -286,6 +284,11 @@ function Shelf({ title, recordings, link, prominent = false }: { title: string; 
   return <View style={[styles.section, prominent && styles.featuredSection]}><SectionTitle title={title} link={link} /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</ScrollView></View>;
 }
 
+function AdminCategoryShelf({ category, recordings }: { category: Category; recordings: Recording[] }) {
+  const scrollRef = useRef<ScrollView>(null);
+  return <View style={styles.section}><SectionTitle link={`/categories/${category.id}`} title={category.name} /><View style={styles.shelfTrack}><Pressable accessibilityLabel={`Scroll ${category.name} left`} onPress={() => scrollRef.current?.scrollTo({ x: 0, animated: true })} style={styles.shelfArrow}><Text style={styles.shelfArrowText}>‹</Text></Pressable><ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}{!recordings.length && <Text style={styles.emptyShelf}>No matching shiurim yet.</Text>}</ScrollView><Pressable accessibilityLabel={`Scroll ${category.name} right`} onPress={() => scrollRef.current?.scrollToEnd({ animated: true })} style={styles.shelfArrow}><Text style={styles.shelfArrowText}>›</Text></Pressable></View></View>;
+}
+
 function YouTubeShelf({ source }: { source: YouTubeSource }) {
   if (!source.videos.length) return null;
   return <View style={styles.section}><VideoShowcase title={`${source.label} — YouTube`} videos={source.videos.slice(0, 8)} /></View>;
@@ -293,25 +296,10 @@ function YouTubeShelf({ source }: { source: YouTubeSource }) {
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
   if (loading) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><ActivityIndicator color="#2d6cdf" /><Text style={styles.stateText}>Loading official YouTube classes</Text></View></View>;
-  if (error) return <View style={styles.section}><SectionTitle title="YouTube Classes" link="/videos" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>YouTube classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
+  if (error) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>YouTube classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
   const visibleSources = sources.filter((source) => source.videos.length > 0);
-  if (!visibleSources.length) return <View style={styles.section}><SectionTitle title="YouTube Classes" link="/videos" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public YouTube classes are available right now.</Text></View></View>;
+  if (!visibleSources.length) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public YouTube classes are available right now.</Text></View></View>;
   return <>{visibleSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}</>;
-}
-
-function isKolHalashonRecording(recording: Recording) {
-  return /kol\s+halashon/i.test(`${recording.title || ''} ${recording.name} ${recording.rabbiName || ''}`);
-}
-
-function AutomaticTopicShelves({ recordings }: { recordings: Recording[] }) {
-  const grouped = new Map<string, Recording[]>();
-  recordings.forEach((recording) => {
-    inferRecordingCategories(recording.title || recording.name, recording.category).forEach((category) => {
-      const current = grouped.get(category) || [];
-      grouped.set(category, [...current, recording]);
-    });
-  });
-  return <>{[...grouped.entries()].filter(([, items]) => items.length > 1).slice(0, 8).map(([category, items]) => <Shelf key={category} title={category} recordings={items} link="/categories" />)}</>;
 }
 
 function useCountdownLabel(countdownAt?: string | null) {
@@ -433,19 +421,16 @@ export function PublicHome() {
   const [payload, setPayload] = useState<HomePayload | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [lazyError, setLazyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { positions } = useListener();
   const [youtubeSources, setYoutubeSources] = useState<YouTubeSource[]>([]);
   const [youtubeLoading, setYoutubeLoading] = useState(true);
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
-  const fullHomeRequested = useRef(false);
   const folderParam = useLocalSearchParams<{ folder?: string }>().folder;
   const folderId = Array.isArray(folderParam) ? folderParam[0] : folderParam;
   useEffect(() => setHydrated(true), []);
-  useEffect(() => { if (folderId) return; fetchPublicJson<HomePayload>('/api/home?summary=1').then(setPayload).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load the library')).finally(() => setLoading(false)); }, [folderId]);
+  useEffect(() => { if (folderId) return; fetchPublicJson<HomePayload>('/api/home').then(setPayload).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load the library')).finally(() => setLoading(false)); }, [folderId]);
   useEffect(() => {
     if (folderId) return;
     setYoutubeLoading(true);
@@ -455,45 +440,19 @@ export function PublicHome() {
       .catch((reason) => setYoutubeError(reason instanceof Error ? reason.message : 'Unable to load YouTube classes'))
       .finally(() => setYoutubeLoading(false));
   }, [folderId]);
-  const router = useRouter();
-  const loadRemainingHome = () => {
-    if (fullHomeRequested.current) return;
-    fullHomeRequested.current = true;
-    fetchPublicJson<HomePayload>('/api/home').then(setPayload).catch((reason) => {
-      fullHomeRequested.current = false;
-      setLazyError(reason instanceof Error ? reason.message : 'Unable to load additional recordings');
-    });
-  };
   const recordings = payload?.recordings || [];
-  const continueListening = useMemo(() => Object.keys(positions).sort((a, b) => positions[b] - positions[a]).map((id) => recordings.find((recording) => recording.id === id)).filter((recording): recording is Recording => Boolean(recording)), [positions, recordings]);
-  const featuredShiurim = payload?.featuredShiurim || [];
-  const kolHalashonRecordings = recordings.filter(isKolHalashonRecording);
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleRecordings = normalizedQuery ? recordings.filter((recording) => `${recording.title || ''} ${recording.name} ${recording.description || ''}`.toLocaleLowerCase().includes(normalizedQuery)) : recordings;
   if (folderId) return <PublicFolderView folderId={folderId} />;
   const isNarrow = hydrated && width < 600;
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent} scrollEventThrottle={500} onScroll={({ nativeEvent }) => {
-    const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-    if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 500) loadRemainingHome();
-  }}><View style={[styles.shell, isNarrow && styles.shellMobile]}>
-    <PublicHeader query={query} setQuery={setQuery} />
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={[styles.shell, isNarrow && styles.shellMobile]}>
+    <PublicHeader onSubmit={setQuery} query={query} setQuery={setQuery} />
     <ToratWelcome />
     <YouTubeHomeSection error={youtubeError} loading={youtubeLoading} sources={youtubeSources} />
     {loading ? <View style={styles.state}><ActivityIndicator color="#0052CC" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateText}>{error}</Text></View> : <>
-      <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
-      <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
-      <Shelf title="Kol Halashon Recordings" recordings={kolHalashonRecordings} link="/explore" />
-      <AutomaticTopicShelves recordings={recordings} />
-
-      {/* TOP: content carousel — live/upcoming when curated by Admin, otherwise recently added */}
-      {Boolean(payload?.carousel?.length) && <View style={styles.section}><SectionTitle title="Live & Recent" /><ContentCarousel items={payload?.carousel || []} /></View>}
-
-      {/* MIDDLE: Rabbis, then Time Frame */}
-      {Boolean(payload?.rabbis?.length) ? <View style={styles.section}><SectionTitle title="Rabbis" link="/rabbis" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{(payload?.rabbis || []).map((rabbi) => <RabbiCard key={rabbi.id} rabbi={rabbi} />)}</ScrollView></View> : <FolderSection folders={payload?.folders || []} onOpen={(folder) => router.push(`/?folder=${encodeURIComponent(folder.id)}` as never)} />}
-      <TimeFrameBuilder recordings={recordings} />
-      <View style={styles.section}><SectionTitle title="Browse by Topic" link="/categories" /><View style={styles.categoryGrid}>{(payload?.categories || []).map((category) => <Link key={category.id} href={`/categories/${category.id}`} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{category.name}</Text><Text numberOfLines={2} style={styles.categoryDescription}>{category.description || 'Browse shiurim'}</Text></Pressable></Link>)}</View></View>
-      <Shelf title="Continue Listening" recordings={continueListening} />
-      <Shelf title="Trending" recordings={payload?.trending || []} />
-      {lazyError && <View style={styles.state}><Text style={styles.stateText}>{lazyError}</Text><Pressable onPress={() => { fullHomeRequested.current = false; setLazyError(null); loadRemainingHome(); }}><Text style={{ color: '#1d4ea8', fontWeight: '700' }}>Load recordings</Text></Pressable></View>}
-
+      {(payload?.categories || []).map((category) => <AdminCategoryShelf key={category.id} category={category} recordings={visibleRecordings.filter((recording) => matchesAdminCategory(recording, category))} />)}
+      {!payload?.categories?.length && <View style={styles.state}><Text style={styles.stateText}>No categories have been published yet.</Text></View>}
+      {normalizedQuery && !visibleRecordings.length && <View style={styles.state}><Text style={styles.stateText}>No shiurim match “{query}”.</Text></View>}
     </>}
   </View></ScrollView>;
 }
@@ -629,6 +588,7 @@ const styles = StyleSheet.create({
   nav: { gap: 7, marginTop: 42 },
   navMobile: { flexDirection: 'row', flex: 1, gap: 2, marginLeft: 8, marginTop: 0, overflow: 'hidden' },
   navItem: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 12 },
+  donateNavItem: { marginTop: 4 },
   navItemActive: { backgroundColor: '#eaf2ff' },
   navIconFallback: { color: '#6b7280', fontSize: 18, width: 22 },
   navItemHover: { backgroundColor: '#f1f5f9' },
@@ -691,6 +651,10 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#142950', fontSize: 25, fontWeight: '800' },
   viewAll: { color: '#2d6cdf', fontSize: 12, fontWeight: '700' },
   shelf: { gap: 16, paddingVertical: 6 },
+  shelfTrack: { alignItems: 'center', flexDirection: 'row', minWidth: 0 },
+  shelfArrow: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#dbe4ee', borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
+  shelfArrowText: { color: '#0052CC', fontSize: 24, lineHeight: 28 },
+  emptyShelf: { color: '#64748b', fontSize: 13, paddingHorizontal: 10, paddingVertical: 20 },
   recordingCard: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
