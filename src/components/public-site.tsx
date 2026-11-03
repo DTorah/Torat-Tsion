@@ -13,6 +13,7 @@ import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
 import { VideoShowcase } from '@/components/video-showcase';
 import { donationUrl } from '@/lib/site';
+import { ToratSionHome } from '@/components/torat-sion-home';
 
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
@@ -418,6 +419,8 @@ function PublicFolderView({ folderId }: { folderId: string }) {
 const folderStyles = StyleSheet.create({ backButton: { marginTop: 28 }, backText: { color: '#1d4ea8', fontSize: 14, fontWeight: '700' }, folderGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 }, folderCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 16, borderWidth: 1, minHeight: 118, padding: 16, width: 220 }, folderIcon: { color: '#2d6cdf', fontSize: 22, fontWeight: '800' }, folderName: { color: '#142950', fontSize: 18, fontWeight: '700', marginTop: 12 }, folderDescription: { color: '#6a7e9b', fontSize: 12, marginTop: 6 } });
 
 export function PublicHome() {
+  return <ToratSionHome />;
+  /*
   const [payload, setPayload] = useState<HomePayload | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -455,6 +458,7 @@ export function PublicHome() {
       {normalizedQuery && !visibleRecordings.length && <View style={styles.state}><Text style={styles.stateText}>No shiurim match “{query}”.</Text></View>}
     </>}
   </View></ScrollView>;
+  */
 }
 
 export function PublicRecordingList({ title, description, recordings, timeFrameCategoryId }: { title: string; description?: string; recordings: Recording[]; timeFrameCategoryId?: string }) {
