@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { PublicRecordingList } from '@/components/public-site';
@@ -8,6 +9,7 @@ import { fetchPublicJson } from '@/lib/public-api-cache';
 type Recording = { id: string; name: string; title?: string; streamUrl: string };
 type Video = { id: string; title: string; channelTitle?: string; watchUrl: string; thumbnailUrl?: string | null };
 export default function SearchPage() {
+  const router = useRouter();
   const { q } = useLocalSearchParams<{ q?: string }>();
   const [recordings, setRecordings] = useState<Recording[] | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -21,7 +23,7 @@ export default function SearchPage() {
   }, [q]);
   if (recordings === null) return <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}><ActivityIndicator color="#2d6cdf" /></View>;
   if (error) return <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center', padding: 24 }}><Text style={{ color: '#b42318' }}>{error}</Text></View>;
-  return <View style={styles.page}><PublicRecordingList title={`Search results${q ? ` for “${q}”` : ''}`} recordings={recordings} />{videos.length > 0 && <View style={styles.videoSection}><Text style={styles.videoHeading}>Video results</Text>{videos.map((video) => <Pressable key={video.id} onPress={() => Linking.openURL(video.watchUrl)} style={styles.videoCard}><Text style={styles.videoTitle}>{video.title}</Text><Text style={styles.videoMeta}>{video.channelTitle || 'YouTube'} · Watch externally</Text></Pressable>)}</View>}</View>;
+  return <View style={styles.page}><PublicRecordingList title={`Search results${q ? ` for “${q}”` : ''}`} recordings={recordings} />{videos.length > 0 && <View style={styles.videoSection}><Text style={styles.videoHeading}>Video results</Text>{videos.map((video) => <Pressable key={video.id} onPress={() => router.push(`/videos?video=${encodeURIComponent(video.id)}` as never)} style={styles.videoCard}><Text style={styles.videoTitle}>{video.title}</Text><Text style={styles.videoMeta}>Play inside Torat Sion</Text></Pressable>)}</View>}</View>;
 }
 
 const styles = StyleSheet.create({

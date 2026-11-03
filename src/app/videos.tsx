@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { apiUrl } from '@/lib/api';
-import { ahavatShalomYouTubeUrl, kolHalashonUrl } from '@/lib/site';
 import { PublicHeader } from '@/components/public-site';
 
 type Video = {
@@ -23,7 +22,7 @@ type VideoPayload = { configured?: boolean; missing?: string[]; videos?: Video[]
 
 function YouTubeEmbed({ video }: { video: Video }) {
   if (Platform.OS !== 'web') {
-    return <Pressable onPress={() => Linking.openURL(video.watchUrl)} style={styles.externalButton}><Text style={styles.externalButtonText}>Open on YouTube</Text></Pressable>;
+    return <View style={styles.externalButton}><Text style={styles.externalButtonText}>Inline video playback is available on the web player.</Text></View>;
   }
   return <View style={styles.embedWrap}>{React.createElement('iframe', {
     src: `${video.embedUrl}?rel=0`,
@@ -85,9 +84,9 @@ export default function VideosScreen() {
     <View style={[styles.contentLayout, isNarrow && styles.contentLayoutNarrow]}>
       <View style={styles.videoContent}>
         {loading ? <Text style={styles.body}>Loading official YouTube classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>YouTube playback is not configured</Text><Text style={styles.body}>The backend needs the server-only environment variable {payload?.missing?.join(', ') || 'YOUTUBE_API_KEY'} in Render. No placeholder videos are shown.</Text></View> : null}
-        {!loading && !error && payload?.configured && sources.map((source) => <View key={source.key} style={styles.sourceSection}><View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>OFFICIAL SOURCE</Text><Text style={styles.sectionTitle}>{source.label}</Text></View>{source.url && <Pressable onPress={() => Linking.openURL(source.url as string)}><Text style={styles.sourceLink}>View channel</Text></Pressable>}</View>{source.videos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videoRow}>{source.videos.map((video) => <VideoCard key={video.id} video={video} onPlay={() => setSelectedVideo(video)} />)}</ScrollView> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes in this source.' : 'No public videos were returned from this source yet.'}</Text>}</View>)}
+        {!loading && !error && payload?.configured && sources.map((source) => <View key={source.key} style={styles.sourceSection}><View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>OFFICIAL SOURCE</Text><Text style={styles.sectionTitle}>{source.label}</Text></View></View>{source.videos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.videoRow}>{source.videos.map((video) => <VideoCard key={video.id} video={video} onPlay={() => setSelectedVideo(video)} />)}</ScrollView> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes in this source.' : 'No public videos were returned from this source yet.'}</Text>}</View>)}
         {!loading && !error && payload?.configured && !sources.some((source) => source.videos.length > 0) && <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public videos were returned from either source yet.'}</Text>}
-        <View style={styles.notice}><Text style={styles.noticeTitle}>More official learning</Text><Text style={styles.body}>You can also explore the verified channel pages directly. YouTube content is embedded from YouTube and is never downloaded or re-hosted by Torat Tsion.</Text><View style={styles.actions}><Pressable onPress={() => Linking.openURL(ahavatShalomYouTubeUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Rabbi Bakhshi channel</Text></Pressable><Pressable onPress={() => Linking.openURL(kolHalashonUrl)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Open Kol Halashon</Text></Pressable></View></View>
+        <View style={styles.notice}><Text style={styles.noticeTitle}>Torat Sion video library</Text><Text style={styles.body}>Videos are presented inside Torat Sion using the configured video metadata and embedded player. Select any thumbnail to continue watching without leaving this site.</Text></View>
       </View>
       {selectedVideo && <VideoPlayerPanel onClose={() => setSelectedVideo(null)} video={selectedVideo} />}
     </View>

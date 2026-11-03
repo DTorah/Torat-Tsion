@@ -7,7 +7,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, T
 import { getShiurSkipSeconds, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
 import { normalizeRecordingTitle } from '@/lib/recording-title';
-import { inferRecordingCategory } from '@/lib/recording-category';
+import { inferRecordingCategories } from '@/lib/recording-category';
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
@@ -52,6 +52,7 @@ type HomePayload = { recordings?: Recording[]; folders?: DriveFolder[]; rabbis?:
 type YouTubeVideo = { id: string; title: string; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; watchUrl: string };
 type YouTubeSource = { key: string; label: string; videos: YouTubeVideo[] };
 type FolderPayload = { folder?: DriveFolder; recordings?: Recording[]; folders?: DriveFolder[]; error?: string };
+type MinyanPreview = { name: string; time: string; location?: string; day?: string };
 
 function Cover({ recording, large = false, mobile = false }: { recording: Recording; large?: boolean; mobile?: boolean }) {
   const coverStyle = StyleSheet.flatten([styles.cover, large && styles.coverLarge, mobile && styles.coverLargeMobile]);
@@ -64,7 +65,15 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
   const { activeRecording } = useListener();
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
+  const [minyanPreview, setMinyanPreview] = useState<MinyanPreview[] | null>(null);
   useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    fetch(apiUrl('/api/minyanim')).then(async (response) => {
+      if (!response.ok) return [];
+      const value = await response.json() as { minyanim?: MinyanPreview[] };
+      return value.minyanim || [];
+    }).then(setMinyanPreview).catch(() => setMinyanPreview([]));
+  }, []);
   const isMobile = hydrated && width < 760;
   const submitSearch = () => {
     const normalizedQuery = query.trim();
@@ -77,6 +86,8 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
     { href: '/rabbis/bakhshi', label: 'Rabbi' },
     { href: '/donate', label: 'Donate' },
     { href: '/favorites', label: 'Library' },
+    { href: '/minyanim', label: 'Minyan Times' },
+    { href: '/categories', label: 'Topics' },
   ] as const;
 
   return (
@@ -94,7 +105,7 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
             return (
               <Link key={item.href} href={item.href as never} asChild>
                 <Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, isActive && styles.navItemActive, hovered && styles.navItemHover]}>
-                  <LineIcon name={item.label === 'Home' ? 'home' : item.label === 'Shiurim' ? 'shiurim' : item.label === 'Parsha' ? 'parsha' : item.label === 'Rabbi' ? 'rabbi' : item.label === 'Donate' ? 'donate' : 'library'} />
+                  <LineIcon name={item.label === 'Home' ? 'home' : item.label === 'Shiurim' ? 'shiurim' : item.label === 'Parsha' ? 'parsha' : item.label === 'Rabbi' ? 'rabbi' : item.label === 'Donate' ? 'donate' : item.label === 'Library' ? 'library' : item.label === 'Topics' ? 'shiurim' : 'parsha'} />
                   <Text style={[styles.navText, isActive && styles.navTextActive]}>{item.label}</Text>
                 </Pressable>
               </Link>
@@ -102,6 +113,7 @@ export function PublicHeader({ query, setQuery }: { query: string; setQuery: (va
           })}
           <Link href="/videos" asChild><Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, hovered && styles.navItemHover]}><LineIcon name="videos" /><Text style={styles.navText}>Videos</Text></Pressable></Link>
         </View>
+        {!isMobile && <Link href="/minyanim" asChild><Pressable accessibilityRole="link" style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</Pressable></Link>}
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
       </View>
 
@@ -159,7 +171,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
       </Link>
 
       <View style={styles.cardBody}>
-        <Text style={styles.cardCategory}>{inferRecordingCategory(recording.title || recording.name, recording.category)}</Text>
+        <Text style={styles.cardCategory}>{inferRecordingCategories(recording.title || recording.name, recording.category)[0] || 'Torah'}</Text>
         <Text numberOfLines={4} style={styles.cardTitle}>{normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}</Text>
         <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torat Tsion'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
         <View style={styles.cardActions}>
@@ -288,6 +300,17 @@ function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSourc
 
 function isKolHalashonRecording(recording: Recording) {
   return /kol\s+halashon/i.test(`${recording.title || ''} ${recording.name} ${recording.rabbiName || ''}`);
+}
+
+function AutomaticTopicShelves({ recordings }: { recordings: Recording[] }) {
+  const grouped = new Map<string, Recording[]>();
+  recordings.forEach((recording) => {
+    inferRecordingCategories(recording.title || recording.name, recording.category).forEach((category) => {
+      const current = grouped.get(category) || [];
+      grouped.set(category, [...current, recording]);
+    });
+  });
+  return <>{[...grouped.entries()].filter(([, items]) => items.length > 1).slice(0, 8).map(([category, items]) => <Shelf key={category} title={category} recordings={items} link="/categories" />)}</>;
 }
 
 function useCountdownLabel(countdownAt?: string | null) {
@@ -457,6 +480,7 @@ export function PublicHome() {
       <Shelf title="Featured Shiurim" recordings={featuredShiurim} prominent />
       <Shelf title="Latest Shiurim" recordings={payload?.newThisWeek || []} link="/explore" />
       <Shelf title="Kol Halashon Recordings" recordings={kolHalashonRecordings} link="/explore" />
+      <AutomaticTopicShelves recordings={recordings} />
 
       {/* TOP: content carousel — live/upcoming when curated by Admin, otherwise recently added */}
       {Boolean(payload?.carousel?.length) && <View style={styles.section}><SectionTitle title="Live & Recent" /><ContentCarousel items={payload?.carousel || []} /></View>}
@@ -613,6 +637,12 @@ const styles = StyleSheet.create({
   playerLink: { color: '#0052CC', fontSize: 12, fontWeight: '700' },
   adminLinkButton: { paddingHorizontal: 12, paddingVertical: 8 },
   adminLinkText: { color: '#8598b8', fontSize: 12, fontWeight: '700' },
+  minyanPanel: { backgroundColor: '#f8fafc', borderColor: '#e5e7eb', borderRadius: 12, borderWidth: 1, marginTop: 28, padding: 12 },
+  minyanTitle: { color: '#111827', fontSize: 12, fontWeight: '800', marginBottom: 8 },
+  minyanRow: { borderTopColor: '#e5e7eb', borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
+  minyanName: { color: '#64748b', flex: 1, fontSize: 11, marginRight: 6 },
+  minyanTime: { color: '#0052CC', fontSize: 11, fontWeight: '800' },
+  minyanEmpty: { color: '#94a3b8', fontSize: 11 },
   search: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', height: 46, maxWidth: 720, paddingHorizontal: 16 },
   searchMobile: { flexBasis: '100%', width: '100%' },
   searchIcon: { alignItems: 'center', color: '#6b7280', justifyContent: 'center', marginRight: 8 },
