@@ -46,9 +46,9 @@ export function VideoCard({ video, onPlay }: { video: ShowcaseVideo; onPlay: () 
   const [hovered, setHovered] = useState(false);
   return <Pressable accessibilityLabel={`Play ${video.title}`} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={[styles.card, hovered && styles.cardHovered, hovered && styles.cardHoverState]}>
     <View style={styles.thumbnailWrap}>
-      {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={styles.thumbnail} /> : <View style={[styles.thumbnail, styles.fallback]}><Text style={styles.fallbackText}>TORAT TSION</Text></View>}
+      {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, hovered && styles.thumbnailZoom]} /> : <View style={[styles.thumbnail, styles.fallback, hovered && styles.thumbnailZoom]}><Text style={styles.fallbackText}>TORAT TSION</Text></View>}
       <View style={[styles.thumbnailShade, hovered && styles.thumbnailShadeVisible]} />
-      <View style={styles.playOverlay}><Text style={styles.playIcon}>▶</Text></View>
+      <View style={[styles.playOverlay, hovered && styles.playOverlayVisible]}><Text style={styles.playIcon}>▶</Text></View>
     </View>
     <Text numberOfLines={2} style={styles.title}>{video.title}</Text>
     {video.sourceLabel ? <Text numberOfLines={1} style={styles.subtitle}>{video.sourceLabel}</Text> : null}
@@ -80,14 +80,16 @@ const styles = StyleSheet.create({
   shelfSection: { marginBottom: 28, minWidth: 0 },
   shelfTitle: { color: '#111827', fontSize: 20, fontWeight: '800', marginBottom: 14, maxWidth: '100%' },
   track: { gap: 14, paddingBottom: 8, paddingRight: 20 },
-  card: { backgroundColor: '#ffffff', borderRadius: 12, maxWidth: 250, overflow: 'hidden', paddingBottom: 10, width: 236 },
+  card: { backgroundColor: '#ffffff', borderRadius: 12, maxWidth: 320, overflow: 'hidden', paddingBottom: 10, width: 300 },
   cardHovered: { shadowColor: '#0f172a', shadowOpacity: 0.16, shadowRadius: 14, transform: [{ scale: 1.015 }] },
   cardHoverState: { backgroundColor: '#f8fafc' },
   thumbnailWrap: { aspectRatio: 16 / 9, backgroundColor: '#dce6ef', overflow: 'hidden', position: 'relative', width: '100%' },
   thumbnail: { height: '100%', width: '100%' },
+  thumbnailZoom: { transform: [{ scale: 1.04 }] },
   thumbnailShade: { backgroundColor: '#000000', bottom: 0, left: 0, opacity: 0, position: 'absolute', right: 0, top: 0 },
   thumbnailShadeVisible: { opacity: 0.16 },
-  playOverlay: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 999, height: 48, justifyContent: 'center', left: '50%', opacity: 0.88, position: 'absolute', top: '50%', transform: [{ translateX: -24 }, { translateY: -24 }], width: 48 },
+  playOverlay: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 999, height: 48, justifyContent: 'center', left: '50%', opacity: 0, position: 'absolute', top: '50%', transform: [{ translateX: -24 }, { translateY: -24 }], width: 48 },
+  playOverlayVisible: { opacity: 1 },
   playIcon: { color: '#0052CC', fontSize: 17, marginLeft: 2 },
   fallback: { alignItems: 'center', justifyContent: 'center' },
   fallbackText: { color: '#356078', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },

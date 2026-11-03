@@ -1,6 +1,5 @@
-import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { apiUrl } from '@/lib/api';
 import { PublicHeader } from '@/components/public-site';
@@ -68,37 +67,12 @@ const styles = StyleSheet.create({
   contentLayout: { alignItems: 'flex-start', flexDirection: 'row', gap: 22 },
   contentLayoutNarrow: { flexDirection: 'column' },
   videoContent: { flex: 1, minWidth: 0 },
-  playerPanel: { backgroundColor: '#fff', borderColor: '#b8d7e6', borderRadius: 16, borderWidth: 1, maxWidth: 420, overflow: 'hidden', padding: 18, width: '100%' },
-  panelHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  panelEyebrow: { color: '#147d89', fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
-  closeButton: { alignItems: 'center', borderColor: '#b8d7e6', borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
-  closeButtonText: { color: '#123b63', fontSize: 24, lineHeight: 26 },
-  embedWrap: { aspectRatio: 16 / 9, backgroundColor: '#102a43', overflow: 'hidden', width: '100%' },
-  playerTitle: { color: '#123b63', fontSize: 23, fontWeight: '800', marginTop: 16 },
-  meta: { color: '#147d89', fontSize: 13, marginTop: 7 },
   sourceSection: { maxWidth: 1100 },
   sectionHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   sectionEyebrow: { color: '#147d89', fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
   sectionTitle: { color: '#102a43', fontSize: 25, fontWeight: '800', marginTop: 5 },
-  sourceLink: { color: '#123b63', fontSize: 13, fontWeight: '800', padding: 8 },
-  videoRow: { gap: 14, paddingBottom: 5 },
-  videoCard: { backgroundColor: '#fff', borderColor: '#d9e7ef', borderRadius: 14, borderWidth: 1, overflow: 'hidden', width: 250 },
-  thumbnailWrap: { backgroundColor: '#d9e7ef', height: 141, position: 'relative', width: '100%' },
-  thumbnail: { height: '100%', width: '100%' },
-  thumbnailFallback: { alignItems: 'center', justifyContent: 'center' },
-  thumbnailFallbackText: { color: '#356078', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  playBadge: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 44, justifyContent: 'center', left: '50%', position: 'absolute', top: '50%', transform: [{ translateX: -22 }, { translateY: -22 }], width: 44 },
-  playIcon: { color: '#fff', fontSize: 15, marginLeft: 2 },
-  videoCardBody: { minHeight: 88, padding: 13 },
-  videoTitle: { color: '#123b63', fontSize: 15, fontWeight: '800', lineHeight: 20 },
-  videoMeta: { color: '#7890a3', fontSize: 12, marginTop: 8 },
   notice: { backgroundColor: '#fff', borderColor: '#d9e7ef', borderRadius: 14, borderWidth: 1, maxWidth: 900, padding: 22 },
   noticeTitle: { color: '#123b63', fontSize: 19, fontWeight: '800' },
   emptyText: { color: '#627d98', fontSize: 14, paddingVertical: 10 },
   error: { color: '#b42318', fontSize: 15 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  externalButton: { alignSelf: 'flex-start', backgroundColor: '#123b63', borderRadius: 8, marginTop: 18, paddingHorizontal: 18, paddingVertical: 13 },
-  externalButtonText: { color: '#fff', fontWeight: '800' },
-  secondaryButton: { borderColor: '#b8d7e6', borderRadius: 8, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11 },
-  secondaryButtonText: { color: '#123b63', fontSize: 12, fontWeight: '800' },
 });
