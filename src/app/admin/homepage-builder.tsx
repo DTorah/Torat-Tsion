@@ -8,6 +8,7 @@ import { AdminLogin, AdminShell, adminApiUrl, useAdminSession } from '@/componen
 type SectionType = 'video-shelf' | 'keyword-shelf' | 'featured-banner' | 'grid' | 'carousel' | 'playlist' | 'announcement' | 'text' | 'image' | 'category-collection';
 type BuilderVideo = { id: string; title: string; thumbnailUrl?: string | null; publishedAt?: string | null; channelTitle?: string; sourceKey?: string; };
 type MediaAsset = { id: string; name: string; url: string; focalX?: number; focalY?: number; };
+type BuilderTemplate = { id: string; name: string; kind: string; document: BuilderDocument };
 type ShelfRules = { keywords: string[]; excludeKeywords: string[]; matchMode: 'any' | 'all'; searchDescriptions: boolean; exactPhrase: boolean; liveOnly: boolean; archivedOnly: boolean; dateFrom: string; dateTo: string; sort: 'newest' | 'oldest' };
 type Section = { id: string; type: SectionType; title: string; subtitle?: string; enabled: boolean; layout: 'shelf' | 'grid' | 'featured'; columns: number; visibleCount: number; background?: string; textColor?: string; fontSize?: number; fontWeight?: '400' | '600' | '700' | '800'; alignment?: 'left' | 'center' | 'right'; radius?: number; source?: string; videoIds?: string[]; manualExcludedIds?: string[]; manualPinnedIds?: string[]; rules?: ShelfRules; description?: string; banner?: { videoId?: string; imageUrl?: string; title?: string; description?: string; buttonText?: string; overlay?: string; textAlign?: 'left' | 'center' | 'right'; height?: number }; responsive?: { desktop?: boolean; tablet?: boolean; mobile?: boolean; cardWidth?: number; spacing?: number }; };
 type BuilderDocument = { design: { theme?: string; background?: string; accent?: string; text?: string; font?: string; radius?: number }; sections: Section[] };
@@ -41,6 +42,7 @@ export default function HomepageBuilderPage() {
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [draggedVideo, setDraggedVideo] = useState<{ sectionId: string; videoId: string } | null>(null);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [templates, setTemplates] = useState<BuilderTemplate[]>([]);
 
   const load = async () => {
     if (!session.token) return;
@@ -72,6 +74,14 @@ export default function HomepageBuilderPage() {
       if (!response.ok) return;
       const payload = await response.json() as { assets?: MediaAsset[] };
       setMediaAssets(payload.assets || []);
+    }).catch(() => {});
+  }, [session.token]);
+  useEffect(() => {
+    if (!session.token) return;
+    fetch(adminApiUrl('/api/admin/home-builder/templates'), { headers: { Authorization: `Bearer ${session.token}` } }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { templates?: BuilderTemplate[] };
+      setTemplates(payload.templates || []);
     }).catch(() => {});
   }, [session.token]);
 
@@ -153,6 +163,22 @@ export default function HomepageBuilderPage() {
     } catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Unable to save homepage'); }
     finally { setSaving(false); }
   };
+  const saveTemplate = async () => {
+    if (!session.token || typeof window === 'undefined') return;
+    const name = window.prompt('Template name', 'Homepage template')?.trim();
+    if (!name) return;
+    const response = await fetch(adminApiUrl('/api/admin/home-builder/templates'), { method: 'POST', headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name, kind: 'page', document }) });
+    const payload = await response.json() as { error?: string };
+    if (response.ok) {
+      setTemplates((current) => [...current, { id: `local-${Date.now()}`, name, kind: 'page', document }]);
+      setMessage('Template saved.');
+    } else setMessage(payload.error || 'Unable to save template');
+  };
+  const applyTemplate = (template: BuilderTemplate) => {
+    if (typeof window !== 'undefined' && !window.confirm(`Apply "${template.name}" to the draft?`)) return;
+    update({ design: { ...template.document.design }, sections: template.document.sections.map((section) => ({ ...section, id: `section-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })) });
+    setMessage('Template applied to the draft. Save or publish when ready.');
+  };
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -200,8 +226,9 @@ export default function HomepageBuilderPage() {
   if (!session.token) return <AdminLogin onLogin={session.setToken} />;
   return <AdminShell token={session.token} title={tabTitle}>
     {loading ? <View style={styles.state}><ActivityIndicator color="#8bbcff" /></View> : <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.toolbar}><View><Text style={styles.eyebrow}>VISUAL CMS</Text><Text style={styles.title}>{tabTitle}</Text><Text style={styles.muted}>Edit the homepage visually. Nothing is public until you publish.</Text></View><View style={styles.toolbarActions}><Pressable onPress={() => setPreview(!preview)} style={styles.secondary}><Text style={styles.secondaryText}>{preview ? 'Close preview' : 'Preview'}</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(false)} style={styles.secondary}><Text style={styles.secondaryText}>Save draft</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(true)} style={styles.primary}><Text style={styles.primaryText}>{saving ? 'Publishing…' : 'Publish'}</Text></Pressable></View></View>
+      <View style={styles.toolbar}><View><Text style={styles.eyebrow}>VISUAL CMS</Text><Text style={styles.title}>{tabTitle}</Text><Text style={styles.muted}>Edit the homepage visually. Nothing is public until you publish.</Text></View><View style={styles.toolbarActions}><Pressable onPress={() => setPreview(!preview)} style={styles.secondary}><Text style={styles.secondaryText}>{preview ? 'Close preview' : 'Preview'}</Text></Pressable><Pressable onPress={() => void saveTemplate()} style={styles.secondary}><Text style={styles.secondaryText}>Save template</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(false)} style={styles.secondary}><Text style={styles.secondaryText}>Save draft</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(true)} style={styles.primary}><Text style={styles.primaryText}>{saving ? 'Publishing…' : 'Publish'}</Text></Pressable></View></View>
       {message && <Text style={styles.message}>{message}</Text>}
+      {templates.length ? <View style={styles.templateRow}><Text style={styles.formLabel}>Reusable templates</Text>{templates.map((template) => <Pressable key={template.id} onPress={() => applyTemplate(template)} style={styles.secondary}><Text style={styles.secondaryText}>{template.name}</Text></Pressable>)}</View> : null}
       {preview || selectedTab === 'design' ? <View style={[styles.preview, { backgroundColor: document.design.background || '#F8F9FA' }]}><View style={styles.previewToolbar}><Text style={[styles.previewTitle, { color: document.design.text || '#111827' }]}>Live homepage preview</Text><View style={styles.deviceRow}>{(['desktop', 'tablet', 'mobile'] as const).map((value) => <Pressable key={value} onPress={() => setDevice(value)} style={[styles.deviceButton, device === value && styles.deviceButtonActive]}><Text style={styles.deviceText}>{value}</Text></Pressable>)}</View></View>{visibleSections.map(previewSection)}{selectedSection && <View style={styles.inspector}><Text style={styles.inspectorTitle}>Editing: {selectedSection.title}</Text><View style={styles.contextToolbar}><Text style={styles.toolbarLabel}>Style</Text><TextInput keyboardType="number-pad" onChangeText={(value) => updateSelectedSection({ fontSize: Math.max(12, Math.min(64, Number(value) || 20)) })} style={styles.toolbarInput} value={String(selectedSection.fontSize || 20)} /><Pressable onPress={() => updateSelectedSection({ fontWeight: selectedSection.fontWeight === '800' ? '600' : '800' })} style={styles.tool}><Text style={styles.toolText}>{selectedSection.fontWeight === '800' ? 'Bold' : 'Regular'}</Text></Pressable><Pressable onPress={() => updateSelectedSection({ alignment: selectedSection.alignment === 'left' ? 'center' : selectedSection.alignment === 'center' ? 'right' : 'left' })} style={styles.tool}><Text style={styles.toolText}>Align {selectedSection.alignment || 'left'}</Text></Pressable><Pressable onPress={() => updateSelectedSection({ radius: selectedSection.radius === 10 ? 20 : 10 })} style={styles.tool}><Text style={styles.toolText}>Radius {selectedSection.radius || 10}</Text></Pressable></View><Text style={styles.formLabel}>Section heading (click and type directly in the preview)</Text><TextInput onChangeText={(title) => updateSelectedSection({ title })} style={styles.input} value={selectedSection.title} /><Text style={styles.formLabel}>Subtitle</Text><TextInput onChangeText={(subtitle) => updateSelectedSection({ subtitle })} style={styles.input} value={selectedSection.subtitle} /><Text style={styles.formLabel}>Description</Text><TextInput multiline onChangeText={(description) => updateSelectedSection({ description })} style={styles.input} value={selectedSection.description || ''} /><Text style={styles.formLabel}>Background / text colors</Text><View style={styles.formRow}><TextInput onChangeText={(background) => updateSelectedSection({ background })} style={styles.input} value={selectedSection.background || '#FFFFFF'} /><TextInput onChangeText={(textColor) => updateSelectedSection({ textColor })} style={styles.input} value={selectedSection.textColor || '#111827'} /></View>            <Text style={styles.formLabel}>Background image URL (choose an uploaded asset from Media Library)</Text><TextInput onChangeText={(imageUrl) => updateSelectedSection({ banner: { ...selectedSection.banner, imageUrl } })} placeholder="/api/media/..." placeholderTextColor="#7f8992" style={styles.input} value={selectedSection.banner?.imageUrl || ''} /><View style={styles.assetRow}>{mediaAssets.slice(0, 6).map((asset) => <Pressable key={asset.id} onPress={() => updateSelectedSection({ banner: { ...selectedSection.banner, imageUrl: adminApiUrl(asset.url) } })} style={styles.assetChip}><Text numberOfLines={1} style={styles.assetText}>{asset.name}</Text></Pressable>)}</View><Text style={styles.formLabel}>Visibility: {device}</Text><Pressable onPress={() => updateSelectedSection({ responsive: { ...selectedSection.responsive, [device]: selectedSection.responsive?.[device] === false } })} style={styles.tool}><Text style={styles.toolText}>{selectedSection.responsive?.[device] === false ? 'Hidden on this device' : 'Visible on this device'}</Text></Pressable></View>}</View> : <>
         <View style={styles.controlRow}><Pressable disabled={!history.length} onPress={undo} style={styles.tool}><Text style={styles.toolText}>Undo</Text></Pressable><Pressable disabled={!redo.length} onPress={redoChange} style={styles.tool}><Text style={styles.toolText}>Redo</Text></Pressable><Text style={styles.unsaved}>{history.length ? 'Unpublished changes' : 'Saved state'}</Text></View>
         <Text style={styles.sectionHeading}>Add section</Text><View style={styles.typeRow}>{sectionTypes.map(([type, label]) => <Pressable key={type} onPress={() => add(type)} style={styles.typeButton}><Text style={styles.typeText}>＋ {label}</Text></Pressable>)}</View>
@@ -229,6 +256,7 @@ const styles = StyleSheet.create({
   secondary: { borderColor: '#49678f', borderRadius: 8, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 10 },
   secondaryText: { color: '#c5d6ee', fontSize: 12, fontWeight: '700' },
   message: { backgroundColor: '#15365b', borderRadius: 8, color: '#c8e0ff', marginTop: 14, padding: 12 },
+  templateRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   controlRow: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 24 },
   tool: { borderColor: '#30486b', borderRadius: 7, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 },
   toolText: { color: '#c5d6ee', fontSize: 12, fontWeight: '700' },

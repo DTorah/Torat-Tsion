@@ -883,7 +883,10 @@ const defaultContent = {
     published: null,
     history: [],
     deleted: [],
+    templates: [],
   },
+  sitePages: [],
+  analytics: { events: [] },
   media: { assets: [], folders: [] },
   categories: [],
   rabbis: [],
@@ -946,7 +949,28 @@ function normalizeHomepageBuilder(value) {
     published: source.published && typeof source.published === 'object' ? source.published : null,
     history: Array.isArray(source.history) ? source.history.slice(-30) : [],
     deleted: Array.isArray(source.deleted) ? source.deleted.slice(-50) : [],
+    templates: Array.isArray(source.templates) ? source.templates.filter((item) => item && typeof item === 'object').slice(-50) : [],
   };
+}
+function safePageSlug(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+}
+function normalizeSitePages(value) {
+  return Array.isArray(value) ? value.filter((page) => page && typeof page === 'object').map((page, index) => ({
+    id: typeof page.id === 'string' && page.id.trim() ? page.id.trim().slice(0, 120) : `page-${index + 1}`,
+    slug: safePageSlug(page.slug) || `page-${index + 1}`,
+    title: typeof page.title === 'string' ? page.title.slice(0, 200) : 'Untitled page',
+    seoTitle: typeof page.seoTitle === 'string' ? page.seoTitle.slice(0, 240) : '',
+    seoDescription: typeof page.seoDescription === 'string' ? page.seoDescription.slice(0, 500) : '',
+    draft: page.draft && typeof page.draft === 'object' ? page.draft : { design: {}, sections: [] },
+    published: page.published === true,
+    sortOrder: Number.isFinite(Number(page.sortOrder)) ? Number(page.sortOrder) : index,
+    updatedAt: typeof page.updatedAt === 'string' ? page.updatedAt : new Date(0).toISOString(),
+  })).slice(0, 100) : [];
+}
+function normalizeAnalytics(value) {
+  const events = value && Array.isArray(value.events) ? value.events : [];
+  return { events: events.filter((event) => event && typeof event === 'object').slice(-10000) };
 }
 function normalizeMedia(value) {
   const source = value && typeof value === 'object' ? value : {};
@@ -966,6 +990,8 @@ async function readContent() {
   const bytes = await readStoredFile('content.json');
   const content = bytes ? { ...defaultContent, ...JSON.parse(bytes.toString('utf8')) } : { ...defaultContent };
   content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+  content.sitePages = normalizeSitePages(content.sitePages);
+  content.analytics = normalizeAnalytics(content.analytics);
   content.media = normalizeMedia(content.media);
   return content;
 }
@@ -1544,6 +1570,48 @@ app.put('/api/admin/home-builder/draft', requireAdmin, async (req, res) => {
       content.homepageBuilder.draft = nextDraft;
       return nextDraft;
     });
+    app.get('/api/admin/home-builder/templates', requireAdmin, async (_req, res) => {
+      try {
+        const content = await readContent();
+        res.json({ templates: normalizeHomepageBuilder(content.homepageBuilder).templates });
+      } catch (error) {
+        console.error('admin homepage templates load failed', safeErrorCode(error));
+        res.status(500).json({ error: 'Unable to load templates' });
+      }
+    });
+    app.post('/api/admin/home-builder/templates', requireAdmin, async (req, res) => {
+      const input = req.body && typeof req.body === 'object' ? req.body : {};
+      const name = String(input.name || '').trim().slice(0, 160);
+      if (!name) return res.status(400).json({ error: 'Template name is required' });
+      try {
+        const template = await mutateContent((content) => {
+          content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+          const item = { id: newContentId('template'), name, kind: ['page', 'section', 'shelf'].includes(input.kind) ? input.kind : 'page', document: normalizeHomepageBuilder({ draft: input.document || content.homepageBuilder.draft }).draft, createdAt: new Date().toISOString() };
+          content.homepageBuilder.templates.push(item);
+          content.homepageBuilder.templates = content.homepageBuilder.templates.slice(-50);
+          return item;
+        });
+        res.status(201).json({ template });
+      } catch (error) {
+        console.error('admin homepage template save failed', safeErrorCode(error));
+        res.status(500).json({ error: 'Unable to save template' });
+      }
+    });
+    app.delete('/api/admin/home-builder/templates/:id', requireAdmin, async (req, res) => {
+      try {
+        const removed = await mutateContent((content) => {
+          content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+          const index = content.homepageBuilder.templates.findIndex((item) => item.id === req.params.id);
+          if (index < 0) return null;
+          return content.homepageBuilder.templates.splice(index, 1)[0];
+        });
+        if (!removed) return res.status(404).json({ error: 'Template not found' });
+        res.json({ deleted: removed.id });
+      } catch (error) {
+        console.error('admin homepage template delete failed', safeErrorCode(error));
+        res.status(500).json({ error: 'Unable to delete template' });
+      }
+    });
     res.json({ draft: nextDraft });
   } catch (error) {
     console.error('admin homepage draft save failed', safeErrorCode(error));
@@ -1580,6 +1648,140 @@ app.post('/api/admin/home-builder/restore/:versionId', requireAdmin, async (req,
   } catch (error) {
     console.error('admin homepage restore failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to restore homepage version' });
+  }
+});
+app.get('/api/pages/:slug', async (req, res) => {
+  try {
+    const page = normalizeSitePages((await readContent()).sitePages).find((item) => item.slug === safePageSlug(req.params.slug) && item.published);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    res.json({ page: { ...page, published: true } });
+  } catch (error) {
+    console.error('public page load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load page' });
+  }
+});
+app.post('/api/analytics/event', async (req, res) => {
+  const input = req.body && typeof req.body === 'object' ? req.body : {};
+  const type = ['page_view', 'video_play', 'search'].includes(input.type) ? input.type : null;
+  if (!type) return res.status(400).json({ error: 'Unsupported analytics event' });
+  try {
+    await mutateContent((content) => {
+      content.analytics = normalizeAnalytics(content.analytics);
+      content.analytics.events.push({
+        id: newContentId('event'),
+        type,
+        path: typeof input.path === 'string' ? input.path.slice(0, 200) : '',
+        videoId: typeof input.videoId === 'string' ? input.videoId.slice(0, 120) : '',
+        query: typeof input.query === 'string' ? input.query.slice(0, 120) : '',
+        createdAt: new Date().toISOString(),
+      });
+      content.analytics.events = content.analytics.events.slice(-10000);
+    });
+    res.status(202).json({ accepted: true });
+  } catch (error) {
+    console.error('analytics event failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to record analytics event' });
+  }
+});
+app.get('/api/admin/site-pages', requireAdmin, async (_req, res) => {
+  try {
+    const content = await readContent();
+    res.json({ pages: content.sitePages.sort((a, b) => a.sortOrder - b.sortOrder) });
+  } catch (error) {
+    console.error('admin pages load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load pages' });
+  }
+});
+app.post('/api/admin/site-pages', requireAdmin, async (req, res) => {
+  const input = req.body && typeof req.body === 'object' ? req.body : {};
+  const title = String(input.title || 'New page').trim().slice(0, 200);
+  const slug = safePageSlug(input.slug || title);
+  if (!slug) return res.status(400).json({ error: 'A valid page slug is required' });
+  try {
+    const page = await mutateContent((content) => {
+      content.sitePages = normalizeSitePages(content.sitePages);
+      if (content.sitePages.some((item) => item.slug === slug)) return null;
+      const created = { id: newContentId('page'), slug, title: title || 'New page', seoTitle: '', seoDescription: '', draft: normalizeHomepageBuilder({ draft: input.draft || { design: {}, sections: [] } }).draft, published: false, sortOrder: content.sitePages.length, updatedAt: new Date().toISOString() };
+      content.sitePages.push(created);
+      return created;
+    });
+    if (!page) return res.status(409).json({ error: 'That page slug already exists' });
+    res.status(201).json({ page });
+  } catch (error) {
+    console.error('admin page create failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to create page' });
+  }
+});
+app.put('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
+  try {
+    const page = await mutateContent((content) => {
+      content.sitePages = normalizeSitePages(content.sitePages);
+      const current = content.sitePages.find((item) => item.id === req.params.id);
+      if (!current) return null;
+      const input = req.body && typeof req.body === 'object' ? req.body : {};
+      const slug = input.slug === undefined ? current.slug : safePageSlug(input.slug);
+      if (!slug || content.sitePages.some((item) => item.id !== current.id && item.slug === slug)) return { conflict: true };
+      Object.assign(current, {
+        title: input.title === undefined ? current.title : String(input.title).slice(0, 200),
+        slug,
+        seoTitle: input.seoTitle === undefined ? current.seoTitle : String(input.seoTitle).slice(0, 240),
+        seoDescription: input.seoDescription === undefined ? current.seoDescription : String(input.seoDescription).slice(0, 500),
+        draft: input.draft && typeof input.draft === 'object' ? normalizeHomepageBuilder({ draft: input.draft }).draft : current.draft,
+        sortOrder: input.sortOrder === undefined ? current.sortOrder : Number(input.sortOrder) || 0,
+        updatedAt: new Date().toISOString(),
+      });
+      return current;
+    });
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    if (page.conflict) return res.status(409).json({ error: 'That page slug is invalid or already exists' });
+    res.json({ page });
+  } catch (error) {
+    console.error('admin page update failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to update page' });
+  }
+});
+app.post('/api/admin/site-pages/:id/publish', requireAdmin, async (req, res) => {
+  try {
+    const page = await mutateContent((content) => {
+      content.sitePages = normalizeSitePages(content.sitePages);
+      const current = content.sitePages.find((item) => item.id === req.params.id);
+      if (!current) return null;
+      current.published = req.body?.published !== false;
+      current.updatedAt = new Date().toISOString();
+      return current;
+    });
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    res.json({ page });
+  } catch (error) {
+    console.error('admin page publish failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to publish page' });
+  }
+});
+app.delete('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
+  try {
+    const removed = await mutateContent((content) => {
+      content.sitePages = normalizeSitePages(content.sitePages);
+      const index = content.sitePages.findIndex((item) => item.id === req.params.id);
+      if (index < 0) return null;
+      return content.sitePages.splice(index, 1)[0];
+    });
+    if (!removed) return res.status(404).json({ error: 'Page not found' });
+    res.json({ deleted: removed.id });
+  } catch (error) {
+    console.error('admin page delete failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to delete page' });
+  }
+});
+app.get('/api/admin/analytics', requireAdmin, async (_req, res) => {
+  try {
+    const events = normalizeAnalytics((await readContent()).analytics).events;
+    const recent = events.filter((event) => Date.parse(event.createdAt) >= Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const count = (type) => recent.filter((event) => event.type === type).length;
+    const popularVideos = Object.entries(recent.filter((event) => event.type === 'video_play').reduce((result, event) => { result[event.videoId] = (result[event.videoId] || 0) + 1; return result; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([videoId, plays]) => ({ videoId, plays }));
+    res.json({ windowDays: 30, available: true, pageViews: count('page_view'), searches: count('search'), videoPlays: count('video_play'), popularVideos });
+  } catch (error) {
+    console.error('admin analytics load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load analytics' });
   }
 });
 app.get('/api/admin/content', requireAdmin, async (_req, res) => { try { res.json({ content: await readContent() }); } catch { res.status(500).json({ error: 'Unable to load content' }); } });
