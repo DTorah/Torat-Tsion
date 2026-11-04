@@ -9,7 +9,7 @@ export type AdminHeaders = { Authorization: string };
 const navigation = [
   ['Dashboard', '/admin'], ['Homepage Builder', '/admin/homepage-builder'], ['Design Studio', '/admin/homepage-builder?tab=design'], ['Banner Manager', '/admin/homepage-builder?tab=banners'],
   ['Publishing & History', '/admin/homepage-builder?tab=history'], ['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis'], ['Categories', '/admin/categories'],
-  ['Featured Content', '/admin/featured'], ['Carousel', '/admin/carousel'], ['Covers', '/admin/covers'],
+  ['Featured Content', '/admin/featured'], ['Carousel', '/admin/carousel'], ['Covers', '/admin/covers'], ['Media Library', '/admin/media'],
 ] as const;
 let activeAdminToken: string | null = null;
 const adminTokenStorageKey = 'torat-tsion-admin-session';

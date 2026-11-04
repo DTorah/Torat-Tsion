@@ -5,6 +5,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
+const { youtubeLiveState } = require('./youtube-live');
 const { google } = require('googleapis');
 const { initializeRecordingCalendar, newestRecordingFirst, recordingDateForFile } = require('./recording-date');
 const { displayRecordingTitle } = require('./recording-title');
@@ -429,15 +430,6 @@ async function youtubePlaylistItems(playlistId) {
     pageToken = page.nextPageToken || '';
   } while (pageToken);
   return items;
-}
-
-function youtubeLiveState(detail) {
-  const liveBroadcastContent = detail?.snippet?.liveBroadcastContent;
-  const liveDetails = detail?.liveStreamingDetails;
-  if (liveBroadcastContent === 'live') return 'live';
-  if (liveBroadcastContent === 'upcoming') return 'upcoming';
-  if (liveDetails?.actualStartTime || liveDetails?.actualEndTime) return 'archived';
-  return 'none';
 }
 
 async function youtubeSourceVideos(source, query = '') {
@@ -892,6 +884,7 @@ const defaultContent = {
     history: [],
     deleted: [],
   },
+  media: { assets: [], folders: [] },
   categories: [],
   rabbis: [],
   recordings: {},
@@ -955,10 +948,25 @@ function normalizeHomepageBuilder(value) {
     deleted: Array.isArray(source.deleted) ? source.deleted.slice(-50) : [],
   };
 }
+function normalizeMedia(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const assets = Array.isArray(source.assets) ? source.assets.filter((asset) => asset && typeof asset === 'object').map((asset) => ({
+    ...asset,
+    id: typeof asset.id === 'string' ? asset.id.slice(0, 120) : '',
+    name: typeof asset.name === 'string' ? asset.name.slice(0, 240) : 'Untitled image',
+    mimeType: allowedMimeTypes.has(asset.mimeType) ? asset.mimeType : 'image/jpeg',
+    folderId: typeof asset.folderId === 'string' ? asset.folderId.slice(0, 120) : null,
+    focalX: Number.isFinite(Number(asset.focalX)) ? Math.max(0, Math.min(1, Number(asset.focalX))) : 0.5,
+    focalY: Number.isFinite(Number(asset.focalY)) ? Math.max(0, Math.min(1, Number(asset.focalY))) : 0.5,
+  })).filter((asset) => asset.id) : [];
+  const folders = Array.isArray(source.folders) ? source.folders.filter((folder) => folder && typeof folder === 'object').map((folder) => ({ id: String(folder.id || '').slice(0, 120), name: String(folder.name || 'Folder').slice(0, 120) })).filter((folder) => folder.id) : [];
+  return { assets: assets.slice(-500), folders: folders.slice(-100) };
+}
 async function readContent() {
   const bytes = await readStoredFile('content.json');
   const content = bytes ? { ...defaultContent, ...JSON.parse(bytes.toString('utf8')) } : { ...defaultContent };
   content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+  content.media = normalizeMedia(content.media);
   return content;
 }
 async function writeContentRaw(content) { await writeStoredFile('content.json', `${JSON.stringify(content, null, 2)}\n`, 'Update Torat Tsion CMS content'); }
@@ -1799,6 +1807,131 @@ app.get('/api/recordings/:id/download', async (req, res) => {
   } catch (error) {
     console.error('recording download failed', driveErrorDetails(error));
     res.status(error?.response?.status === 416 ? 416 : 404).json({ error: 'Unable to download recording' });
+  }
+});
+app.get('/api/admin/media', requireAdmin, async (req, res) => {
+  try {
+    const content = await readContent();
+    const query = String(req.query.q || '').trim().toLowerCase();
+    const folderId = String(req.query.folderId || '').trim();
+    const assets = content.media.assets.filter((asset) => (!query || `${asset.name} ${asset.alt || ''}`.toLowerCase().includes(query)) && (!folderId || asset.folderId === folderId));
+    res.json({ assets, folders: content.media.folders });
+  } catch (error) {
+    console.error('media library load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load media library' });
+  }
+});
+app.get('/api/media/:id', async (req, res) => {
+  try {
+    const content = await readContent();
+    const asset = content.media.assets.find((item) => item.id === req.params.id);
+    if (!asset) return res.status(404).end();
+    const bytes = await readStoredFile(`media/${asset.id}.${extension(asset.mimeType)}`);
+    if (!bytes) return res.status(404).end();
+    res.type(asset.mimeType).set('Cache-Control', 'public, max-age=300').send(bytes);
+  } catch (error) {
+    console.error('media asset load failed', safeErrorCode(error));
+    res.status(404).end();
+  }
+});
+app.post('/api/admin/media', requireAdmin, upload.single('image'), async (req, res) => {
+  const file = req.file;
+  if (!file || !allowedMimeTypes.has(file.mimetype)) return res.status(400).json({ error: 'A valid PNG, JPEG, or WebP image is required' });
+  if (!validSignature(file.buffer, file.mimetype)) return res.status(400).json({ error: 'The uploaded file is not a valid image' });
+  try {
+    const id = newContentId('media');
+    const ext = extension(file.mimetype);
+    const asset = { id, name: (file.originalname || `image.${ext}`).slice(0, 240), mimeType: file.mimetype, size: file.size, folderId: typeof req.body?.folderId === 'string' ? req.body.folderId.slice(0, 120) : null, alt: typeof req.body?.alt === 'string' ? req.body.alt.slice(0, 240) : '', focalX: 0.5, focalY: 0.5, updatedAt: new Date().toISOString(), url: `/api/media/${encodeURIComponent(id)}` };
+    await writeStoredFile(`media/${id}.${ext}`, file.buffer, 'Upload Torat Tsion media asset');
+    await mutateContent((content) => { content.media = normalizeMedia(content.media); content.media.assets.push(asset); });
+    res.status(201).json({ asset });
+  } catch (error) {
+    console.error('media upload failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to save media asset' });
+  }
+});
+app.patch('/api/admin/media/:id', requireAdmin, async (req, res) => {
+  try {
+    const result = await mutateContent((content) => {
+      content.media = normalizeMedia(content.media);
+      const asset = content.media.assets.find((item) => item.id === req.params.id);
+      if (!asset) return null;
+      if (typeof req.body?.name === 'string') asset.name = req.body.name.trim().slice(0, 240) || asset.name;
+      if (typeof req.body?.alt === 'string') asset.alt = req.body.alt.slice(0, 240);
+      if (typeof req.body?.folderId === 'string' || req.body?.folderId === null) asset.folderId = req.body.folderId ? String(req.body.folderId).slice(0, 120) : null;
+      if (req.body?.focalX !== undefined) asset.focalX = Math.max(0, Math.min(1, Number(req.body.focalX) || 0.5));
+      if (req.body?.focalY !== undefined) asset.focalY = Math.max(0, Math.min(1, Number(req.body.focalY) || 0.5));
+      asset.updatedAt = new Date().toISOString();
+      return asset;
+    });
+    if (!result) return res.status(404).json({ error: 'Media asset not found' });
+    res.json({ asset: result });
+  } catch (error) {
+    console.error('media asset update failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to update media asset' });
+  }
+});
+app.post('/api/admin/media/:id/replace', requireAdmin, upload.single('image'), async (req, res) => {
+  const file = req.file;
+  if (!file || !allowedMimeTypes.has(file.mimetype) || !validSignature(file.buffer, file.mimetype)) return res.status(400).json({ error: 'A valid image is required' });
+  try {
+    const result = await mutateContent((content) => {
+      content.media = normalizeMedia(content.media);
+      const asset = content.media.assets.find((item) => item.id === req.params.id);
+      if (!asset) return null;
+      return { asset, previousMimeType: asset.mimeType };
+    });
+    if (!result) return res.status(404).json({ error: 'Media asset not found' });
+    await deleteStoredFile(`media/${result.asset.id}.${extension(result.previousMimeType)}`, 'Remove replaced Torat Tsion media asset');
+    const ext = extension(file.mimetype);
+    await writeStoredFile(`media/${result.asset.id}.${ext}`, file.buffer, 'Replace Torat Tsion media asset');
+    const asset = await mutateContent((content) => {
+      content.media = normalizeMedia(content.media);
+      const current = content.media.assets.find((item) => item.id === req.params.id);
+      if (!current) return null;
+      current.mimeType = file.mimetype;
+      current.size = file.size;
+      current.updatedAt = new Date().toISOString();
+      current.url = `/api/media/${encodeURIComponent(current.id)}`;
+      return current;
+    });
+    res.json({ asset });
+  } catch (error) {
+    console.error('media asset replacement failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to replace media asset' });
+  }
+});
+app.delete('/api/admin/media/:id', requireAdmin, async (req, res) => {
+  try {
+    const result = await mutateContent((content) => {
+      content.media = normalizeMedia(content.media);
+      const index = content.media.assets.findIndex((item) => item.id === req.params.id);
+      if (index < 0) return null;
+      const [asset] = content.media.assets.splice(index, 1);
+      return asset;
+    });
+    if (!result) return res.status(404).json({ error: 'Media asset not found' });
+    await deleteStoredFile(`media/${result.id}.${extension(result.mimeType)}`, 'Remove Torat Sion media asset');
+    res.json({ asset: null });
+  } catch (error) {
+    console.error('media asset removal failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to delete media asset' });
+  }
+});
+app.post('/api/admin/media/folders', requireAdmin, async (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 120) : '';
+  if (!name) return res.status(400).json({ error: 'Folder name is required' });
+  try {
+    const folder = await mutateContent((content) => {
+      content.media = normalizeMedia(content.media);
+      const next = { id: newContentId('media-folder'), name };
+      content.media.folders.push(next);
+      return next;
+    });
+    res.status(201).json({ folder });
+  } catch (error) {
+    console.error('media folder creation failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to create media folder' });
   }
 });
 app.get('/api/covers', async (_req, res) => { try { res.json(await readMapping()); } catch { res.status(500).json({ error: 'Unable to load Shiur covers' }); } });
