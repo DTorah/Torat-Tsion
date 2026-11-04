@@ -42,6 +42,7 @@ export default function HomepageBuilderPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [draggedVideo, setDraggedVideo] = useState<{ sectionId: string; videoId: string } | null>(null);
+  const [touchSectionId, setTouchSectionId] = useState<string | null>(null);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [templates, setTemplates] = useState<BuilderTemplate[]>([]);
 
@@ -240,6 +241,8 @@ export default function HomepageBuilderPage() {
     onDragStart: (event: { nativeEvent?: { dataTransfer?: { setData: (type: string, value: string) => void } } }) => event.nativeEvent?.dataTransfer?.setData('text/plain', section.id),
     onDragOver: (event: { preventDefault?: () => void }) => event.preventDefault?.(),
     onDrop: (event: { nativeEvent?: { dataTransfer?: { getData: (type: string) => string } } }) => reorderByDrop(event.nativeEvent?.dataTransfer?.getData('text/plain') || '', section.id),
+    onTouchStart: () => setTouchSectionId(section.id),
+    onTouchEnd: () => { if (touchSectionId && touchSectionId !== section.id) reorderByDrop(touchSectionId, section.id); setTouchSectionId(null); },
   } : {};
 
   if (!session.token) return <AdminLogin onLogin={session.setToken} />;
