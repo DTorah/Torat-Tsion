@@ -13,6 +13,7 @@ type ShelfRules = { keywords: string[]; excludeKeywords: string[]; matchMode: 'a
 type Section = { id: string; type: SectionType; title: string; subtitle?: string; enabled: boolean; layout: 'shelf' | 'grid' | 'featured'; columns: number; visibleCount: number; background?: string; textColor?: string; fontSize?: number; fontWeight?: '400' | '600' | '700' | '800'; alignment?: 'left' | 'center' | 'right'; radius?: number; source?: string; videoIds?: string[]; manualExcludedIds?: string[]; manualPinnedIds?: string[]; rules?: ShelfRules; description?: string; banner?: { videoId?: string; imageUrl?: string; title?: string; description?: string; buttonText?: string; overlay?: string; textAlign?: 'left' | 'center' | 'right'; height?: number }; responsive?: { desktop?: boolean; tablet?: boolean; mobile?: boolean; cardWidth?: number; spacing?: number }; };
 type BuilderDocument = { design: { theme?: string; background?: string; accent?: string; text?: string; font?: string; radius?: number }; sections: Section[] };
 type BuilderResponse = { draft: BuilderDocument; published?: BuilderDocument | null; history?: Array<{ id: string; createdAt: string; createdBy?: string; draft: BuilderDocument }>; deleted?: Section[]; error?: string };
+type SitePageResponse = { page?: { id: string; title: string; draft: BuilderDocument }; error?: string };
 
 const sectionTypes: Array<[SectionType, string]> = [
   ['featured-banner', 'Featured banner'], ['video-shelf', 'Video shelf'], ['keyword-shelf', 'Keyword shelf'], ['grid', 'Video grid'], ['carousel', 'Carousel'],
@@ -26,7 +27,7 @@ function newSection(type: SectionType, index: number): Section {
 
 export default function HomepageBuilderPage() {
   const session = useAdminSession();
-  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const { tab, pageId } = useLocalSearchParams<{ tab?: string; pageId?: string }>();
   const [document, setDocument] = useState<BuilderDocument>({ design: {}, sections: [] });
   const [history, setHistory] = useState<BuilderDocument[]>([]);
   const [redo, setRedo] = useState<BuilderDocument[]>([]);
@@ -54,13 +55,21 @@ export default function HomepageBuilderPage() {
       setDocument(payload.draft);
       setDeleted(payload.deleted || []);
       setVersions(payload.history || []);
+      if (pageId) {
+        const pageResponse = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(String(pageId))}`), { headers: { Authorization: `Bearer ${session.token}` } });
+        const pagePayload = await pageResponse.json() as SitePageResponse;
+        if (!pageResponse.ok || !pagePayload.page) throw new Error(pagePayload.error || 'Unable to load page builder');
+        setDocument(pagePayload.page.draft);
+        setDeleted([]);
+        setVersions([]);
+      }
       setHistory([]);
       setRedo([]);
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : 'Unable to load homepage builder');
     } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, [session.token]);
+  useEffect(() => { void load(); }, [session.token, pageId]);
   useEffect(() => {
     fetch(adminApiUrl('/api/videos')).then(async (response) => {
       if (!response.ok) throw new Error('Unable to load videos');
@@ -152,6 +161,16 @@ export default function HomepageBuilderPage() {
     if (!session.token || saving) return;
     setSaving(true); setMessage(null);
     try {
+      if (pageId) {
+        const pageSave = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(String(pageId))}`), { method: 'PUT', headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ draft: document }) });
+        if (!pageSave.ok) throw new Error((await pageSave.json() as { error?: string }).error || 'Unable to save page draft');
+        if (publish) {
+          const pagePublish = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(String(pageId))}/publish`), { method: 'POST', headers: { Authorization: `Bearer ${session.token}` } });
+          if (!pagePublish.ok) throw new Error((await pagePublish.json() as { error?: string }).error || 'Unable to publish page');
+          setMessage('Page published successfully.');
+        } else setMessage('Page draft saved. Visitors still see the last published version.');
+        return;
+      }
       const save = await fetch(adminApiUrl('/api/admin/home-builder/draft'), { method: 'PUT', headers: { Authorization: `Bearer ${session.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(document) });
       if (!save.ok) throw new Error((await save.json() as { error?: string }).error || 'Unable to save draft');
       if (publish) {

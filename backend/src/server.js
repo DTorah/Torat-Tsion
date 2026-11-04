@@ -1694,6 +1694,16 @@ app.get('/api/admin/site-pages', requireAdmin, async (_req, res) => {
     res.status(500).json({ error: 'Unable to load pages' });
   }
 });
+app.get('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
+  try {
+    const page = normalizeSitePages((await readContent()).sitePages).find((item) => item.id === req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    res.json({ page });
+  } catch (error) {
+    console.error('admin page load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load page' });
+  }
+});
 app.post('/api/admin/site-pages', requireAdmin, async (req, res) => {
   const input = req.body && typeof req.body === 'object' ? req.body : {};
   const title = String(input.title || 'New page').trim().slice(0, 200);
