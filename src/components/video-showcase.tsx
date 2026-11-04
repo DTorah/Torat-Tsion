@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { apiUrl } from '@/lib/api';
 
 export type ShowcaseVideo = {
   id: string;
@@ -43,7 +44,11 @@ function YouTubePlayer({ video }: { video: ShowcaseVideo }) {
 
 export function YouTubePlaybackProvider({ children }: { children: ReactNode }) {
   const [activeVideo, setActiveVideo] = useState<ShowcaseVideo | null>(null);
-  return <YouTubePlaybackContext.Provider value={{ activeVideo, playVideo: setActiveVideo, stopVideo: () => setActiveVideo(null) }}>
+  const playVideo = (video: ShowcaseVideo) => {
+    setActiveVideo(video);
+    void fetch(apiUrl('/api/analytics/event'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'video_play', videoId: video.id, path: typeof window !== 'undefined' ? window.location.pathname : '' }) }).catch(() => {});
+  };
+  return <YouTubePlaybackContext.Provider value={{ activeVideo, playVideo, stopVideo: () => setActiveVideo(null) }}>
     {children}
     <GlobalYouTubePlayer />
   </YouTubePlaybackContext.Provider>;

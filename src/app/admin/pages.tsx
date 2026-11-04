@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AdminLogin, AdminShell, adminApiUrl, useAdminSession } from '@/components/admin-shell';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-type Page = { id: string; title: string; slug: string; seoTitle: string; seoDescription: string; published: boolean; sortOrder: number };
+type Page = { id: string; title: string; slug: string; seoTitle: string; seoDescription: string; published: boolean; scheduleAt?: string | null; sortOrder: number };
 type PagePayload = { pages?: Page[]; error?: string };
 type Analytics = { pageViews: number; searches: number; videoPlays: number; windowDays: number };
 
@@ -56,6 +56,24 @@ export default function PagesAdmin() {
     setPages((current) => current.map((item) => item.id === selected.id ? payload.page! : item));
     setMessage(payload.page.published ? 'Page published.' : 'Page unpublished.');
   };
+  const schedule = async () => {
+    if (!selected || typeof window === 'undefined') return;
+    const value = window.prompt('Publish at (ISO date/time, e.g. 2026-11-05T10:00:00Z)', selected.scheduleAt || '');
+    if (!value) return;
+    const response = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(selected.id)}/publish`), { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduleAt: value }) });
+    const payload = await response.json() as { page?: Page; error?: string };
+    if (!response.ok || !payload.page) return setMessage(payload.error || 'Unable to schedule page');
+    setPages((current) => current.map((item) => item.id === selected.id ? payload.page! : item));
+    setMessage(`Page scheduled for ${payload.page.scheduleAt}.`);
+  };
+  const rollback = async () => {
+    if (!selected || (typeof window !== 'undefined' && !window.confirm('Roll back this page to the previous published version?'))) return;
+    const response = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(selected.id)}/rollback`), { method: 'POST', headers });
+    const payload = await response.json() as { page?: Page; error?: string };
+    if (!response.ok || !payload.page) return setMessage(payload.error || 'No previous version is available');
+    setPages((current) => current.map((item) => item.id === selected.id ? payload.page! : item));
+    setMessage('Page rolled back.');
+  };
   const remove = async () => {
     if (!selected || (typeof window !== 'undefined' && !window.confirm(`Delete "${selected.title}"?`))) return;
     const response = await fetch(adminApiUrl(`/api/admin/site-pages/${encodeURIComponent(selected.id)}`), { method: 'DELETE', headers });
@@ -69,7 +87,7 @@ export default function PagesAdmin() {
     <View style={styles.header}><View><Text style={styles.eyebrow}>DESIGN STUDIO / PAGES</Text><Text style={styles.title}>Custom pages</Text><Text style={styles.subtitle}>Create draft pages with safe slugs and publish them explicitly.</Text></View><Pressable onPress={() => void create()} style={styles.primary}><Text style={styles.primaryText}>New page</Text></Pressable></View>
     {message ? <Text style={styles.message}>{message}</Text> : null}
     {analytics ? <View style={styles.analytics}><Text style={styles.analyticsTitle}>Verified analytics · last {analytics.windowDays} days</Text><Text style={styles.analyticsText}>Page views: {analytics.pageViews} · Searches: {analytics.searches} · Video plays: {analytics.videoPlays}</Text></View> : <Text style={styles.muted}>Analytics are only shown when recorded events are available.</Text>}
-    {loading ? <Text style={styles.muted}>Loading pages…</Text> : <View style={styles.layout}><View style={styles.list}>{pages.length ? pages.map((page) => <Pressable key={page.id} onPress={() => setSelectedId(page.id)} style={[styles.item, selectedId === page.id && styles.selected]}><Text style={styles.itemTitle}>{page.title}</Text><Text style={styles.itemMeta}>/{page.slug} · {page.published ? 'Published' : 'Draft'}</Text></Pressable>) : <Text style={styles.muted}>No custom pages yet.</Text>}</View>{selected ? <View style={styles.editor}><Text style={styles.editorTitle}>Page settings</Text><Text style={styles.label}>Title</Text><TextInput defaultValue={selected.title} onEndEditing={(event) => void save({ title: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>URL slug</Text><TextInput autoCapitalize="none" defaultValue={selected.slug} onEndEditing={(event) => void save({ slug: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>SEO title</Text><TextInput defaultValue={selected.seoTitle} onEndEditing={(event) => void save({ seoTitle: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>SEO description</Text><TextInput defaultValue={selected.seoDescription} multiline onEndEditing={(event) => void save({ seoDescription: event.nativeEvent.text })} style={[styles.input, styles.textarea]} /><View style={styles.actions}><Pressable onPress={() => void publish()} style={styles.secondary}><Text style={styles.secondaryText}>{selected.published ? 'Unpublish' : 'Publish'}</Text></Pressable><Pressable onPress={() => void remove()} style={styles.danger}><Text style={styles.dangerText}>Delete</Text></Pressable></View><Text style={styles.muted}>Page layout editing uses the same persisted homepage section model and will be expanded through Design Studio.</Text></View> : <Text style={styles.muted}>Select a page to edit its settings.</Text>}</View>}
+    {loading ? <Text style={styles.muted}>Loading pages…</Text> : <View style={styles.layout}><View style={styles.list}>{pages.length ? pages.map((page) => <Pressable key={page.id} onPress={() => setSelectedId(page.id)} style={[styles.item, selectedId === page.id && styles.selected]}><Text style={styles.itemTitle}>{page.title}</Text><Text style={styles.itemMeta}>/{page.slug} · {page.scheduleAt ? `Scheduled ${page.scheduleAt}` : page.published ? 'Published' : 'Draft'}</Text></Pressable>) : <Text style={styles.muted}>No custom pages yet.</Text>}</View>{selected ? <View style={styles.editor}><Text style={styles.editorTitle}>Page settings</Text><Text style={styles.label}>Title</Text><TextInput defaultValue={selected.title} onEndEditing={(event) => void save({ title: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>URL slug</Text><TextInput autoCapitalize="none" defaultValue={selected.slug} onEndEditing={(event) => void save({ slug: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>SEO title</Text><TextInput defaultValue={selected.seoTitle} onEndEditing={(event) => void save({ seoTitle: event.nativeEvent.text })} style={styles.input} /><Text style={styles.label}>SEO description</Text><TextInput defaultValue={selected.seoDescription} multiline onEndEditing={(event) => void save({ seoDescription: event.nativeEvent.text })} style={[styles.input, styles.textarea]} /><View style={styles.actions}><Pressable onPress={() => void publish()} style={styles.secondary}><Text style={styles.secondaryText}>{selected.published ? 'Unpublish' : 'Publish'}</Text></Pressable><Pressable onPress={() => void schedule()} style={styles.secondary}><Text style={styles.secondaryText}>Schedule</Text></Pressable><Pressable onPress={() => void rollback()} style={styles.secondary}><Text style={styles.secondaryText}>Rollback</Text></Pressable><Pressable onPress={() => void remove()} style={styles.danger}><Text style={styles.dangerText}>Delete</Text></Pressable></View><Text style={styles.muted}>Page layout editing uses the same persisted homepage section model and will be expanded through Design Studio.</Text></View> : <Text style={styles.muted}>Select a page to edit its settings.</Text>}</View>}
   </ScrollView></AdminShell>;
 }
 

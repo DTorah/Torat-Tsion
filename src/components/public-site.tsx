@@ -71,6 +71,9 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
   const [minyanPreview, setMinyanPreview] = useState<MinyanPreview[] | null>(null);
   useEffect(() => setHydrated(true), []);
   useEffect(() => {
+    void fetch(apiUrl('/api/analytics/event'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'page_view', path: pathname }) }).catch(() => {});
+  }, [pathname]);
+  useEffect(() => {
     fetch(apiUrl('/api/minyanim')).then(async (response) => {
       if (!response.ok) return [];
       const value = await response.json() as { minyanim?: MinyanPreview[] };
@@ -80,7 +83,10 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
   const isMobile = hydrated && width < 760;
   const submitSearch = () => {
     const normalizedQuery = query.trim();
-    if (normalizedQuery) onSubmit ? onSubmit(normalizedQuery) : router.push(`/search?q=${encodeURIComponent(normalizedQuery)}` as never);
+    if (normalizedQuery) {
+      void fetch(apiUrl('/api/analytics/event'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'search', query: normalizedQuery, path: pathname }) }).catch(() => {});
+      onSubmit ? onSubmit(normalizedQuery) : router.push(`/search?q=${encodeURIComponent(normalizedQuery)}` as never);
+    }
   };
   const openDonation = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(donationUrl);

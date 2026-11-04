@@ -963,7 +963,9 @@ function normalizeSitePages(value) {
     seoTitle: typeof page.seoTitle === 'string' ? page.seoTitle.slice(0, 240) : '',
     seoDescription: typeof page.seoDescription === 'string' ? page.seoDescription.slice(0, 500) : '',
     draft: page.draft && typeof page.draft === 'object' ? page.draft : { design: {}, sections: [] },
+    previousPublished: page.previousPublished && typeof page.previousPublished === 'object' ? page.previousPublished : null,
     published: page.published === true,
+    scheduleAt: typeof page.scheduleAt === 'string' ? page.scheduleAt : null,
     sortOrder: Number.isFinite(Number(page.sortOrder)) ? Number(page.sortOrder) : index,
     updatedAt: typeof page.updatedAt === 'string' ? page.updatedAt : new Date(0).toISOString(),
   })).slice(0, 100) : [];
@@ -1652,7 +1654,7 @@ app.post('/api/admin/home-builder/restore/:versionId', requireAdmin, async (req,
 });
 app.get('/api/pages/:slug', async (req, res) => {
   try {
-    const page = normalizeSitePages((await readContent()).sitePages).find((item) => item.slug === safePageSlug(req.params.slug) && item.published);
+    const page = normalizeSitePages((await readContent()).sitePages).find((item) => item.slug === safePageSlug(req.params.slug) && item.published && (!item.scheduleAt || Date.parse(item.scheduleAt) <= Date.now()));
     if (!page) return res.status(404).json({ error: 'Page not found' });
     res.json({ page: { ...page, published: true } });
   } catch (error) {
@@ -1701,7 +1703,7 @@ app.post('/api/admin/site-pages', requireAdmin, async (req, res) => {
     const page = await mutateContent((content) => {
       content.sitePages = normalizeSitePages(content.sitePages);
       if (content.sitePages.some((item) => item.slug === slug)) return null;
-      const created = { id: newContentId('page'), slug, title: title || 'New page', seoTitle: '', seoDescription: '', draft: normalizeHomepageBuilder({ draft: input.draft || { design: {}, sections: [] } }).draft, published: false, sortOrder: content.sitePages.length, updatedAt: new Date().toISOString() };
+      const created = { id: newContentId('page'), slug, title: title || 'New page', seoTitle: '', seoDescription: '', draft: normalizeHomepageBuilder({ draft: input.draft || { design: {}, sections: [] } }).draft, previousPublished: null, published: false, scheduleAt: null, sortOrder: content.sitePages.length, updatedAt: new Date().toISOString() };
       content.sitePages.push(created);
       return created;
     });
@@ -1713,6 +1715,7 @@ app.post('/api/admin/site-pages', requireAdmin, async (req, res) => {
   }
 });
 app.put('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
+  if (req.body?.scheduleAt && (!Number.isFinite(Date.parse(req.body.scheduleAt)) || Date.parse(req.body.scheduleAt) <= Date.now())) return res.status(400).json({ error: 'Schedule time must be in the future' });
   try {
     const page = await mutateContent((content) => {
       content.sitePages = normalizeSitePages(content.sitePages);
@@ -1727,6 +1730,7 @@ app.put('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
         seoTitle: input.seoTitle === undefined ? current.seoTitle : String(input.seoTitle).slice(0, 240),
         seoDescription: input.seoDescription === undefined ? current.seoDescription : String(input.seoDescription).slice(0, 500),
         draft: input.draft && typeof input.draft === 'object' ? normalizeHomepageBuilder({ draft: input.draft }).draft : current.draft,
+        scheduleAt: input.scheduleAt === undefined ? current.scheduleAt : (input.scheduleAt ? new Date(input.scheduleAt).toISOString() : null),
         sortOrder: input.sortOrder === undefined ? current.sortOrder : Number(input.sortOrder) || 0,
         updatedAt: new Date().toISOString(),
       });
@@ -1741,12 +1745,25 @@ app.put('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
   }
 });
 app.post('/api/admin/site-pages/:id/publish', requireAdmin, async (req, res) => {
+  if (req.body?.scheduleAt && (!Number.isFinite(Date.parse(req.body.scheduleAt)) || Date.parse(req.body.scheduleAt) <= Date.now())) return res.status(400).json({ error: 'Schedule time must be in the future' });
   try {
     const page = await mutateContent((content) => {
       content.sitePages = normalizeSitePages(content.sitePages);
       const current = content.sitePages.find((item) => item.id === req.params.id);
       if (!current) return null;
-      current.published = req.body?.published !== false;
+      if (req.body?.published !== false) {
+        current.previousPublished = current.published ? current.draft : current.previousPublished;
+        current.published = true;
+      } else {
+        current.published = false;
+        current.scheduleAt = null;
+      }
+      if (req.body?.scheduleAt) {
+        const scheduled = Date.parse(req.body.scheduleAt);
+        if (!Number.isFinite(scheduled) || scheduled <= Date.now()) return { invalidSchedule: true };
+        current.scheduleAt = new Date(scheduled).toISOString();
+        current.published = true;
+      }
       current.updatedAt = new Date().toISOString();
       return current;
     });
@@ -1755,6 +1772,27 @@ app.post('/api/admin/site-pages/:id/publish', requireAdmin, async (req, res) => 
   } catch (error) {
     console.error('admin page publish failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to publish page' });
+  }
+});
+app.post('/api/admin/site-pages/:id/rollback', requireAdmin, async (req, res) => {
+  try {
+    const page = await mutateContent((content) => {
+      content.sitePages = normalizeSitePages(content.sitePages);
+      const current = content.sitePages.find((item) => item.id === req.params.id);
+      if (!current || !current.previousPublished) return null;
+      const currentPublished = current.draft;
+      current.draft = current.previousPublished;
+      current.previousPublished = currentPublished;
+      current.published = true;
+      current.scheduleAt = null;
+      current.updatedAt = new Date().toISOString();
+      return current;
+    });
+    if (!page) return res.status(409).json({ error: 'No previous published version is available' });
+    res.json({ page });
+  } catch (error) {
+    console.error('admin page rollback failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to roll back page' });
   }
 });
 app.delete('/api/admin/site-pages/:id', requireAdmin, async (req, res) => {
