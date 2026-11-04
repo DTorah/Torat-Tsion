@@ -21,6 +21,14 @@ type DriveDiagnostic = {
   errorReason?: string | null;
   errorMessage?: string | null;
 };
+type YoutubeDiagnostic = {
+  totalVideos?: number;
+  liveVideos?: number;
+  upcomingVideos?: number;
+  archivedLiveVideos?: number;
+  sources?: Array<{ key: string; label: string; error?: string | null; diagnostics?: { totalRetrieved?: number; discoveredCount?: number; liveCount?: number; upcomingCount?: number; archivedLiveCount?: number } }>;
+  error?: string;
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -28,6 +36,9 @@ export default function AdminDashboard() {
   const [driveDiagnostic, setDriveDiagnostic] = useState<DriveDiagnostic | null>(null);
   const [driveDiagnosticLoading, setDriveDiagnosticLoading] = useState(false);
   const [driveDiagnosticMessage, setDriveDiagnosticMessage] = useState<string | null>(null);
+  const [youtubeDiagnostic, setYoutubeDiagnostic] = useState<YoutubeDiagnostic | null>(null);
+  const [youtubeDiagnosticMessage, setYoutubeDiagnosticMessage] = useState<string | null>(null);
+  const [youtubeDiagnosticLoading, setYoutubeDiagnosticLoading] = useState(false);
 
   const runDriveDiagnostic = async () => {
     if (!session.token || driveDiagnosticLoading) return;
@@ -46,9 +57,25 @@ export default function AdminDashboard() {
       setDriveDiagnosticLoading(false);
     }
   };
+  const runYoutubeDiagnostic = async () => {
+    if (!session.token || youtubeDiagnosticLoading) return;
+    setYoutubeDiagnosticLoading(true);
+    setYoutubeDiagnosticMessage(null);
+    try {
+      const response = await fetch(adminApiUrl('/api/admin/youtube/diagnostic'), { headers: { Authorization: `Bearer ${session.token}` } });
+      const payload = await response.json() as YoutubeDiagnostic;
+      if (!response.ok) throw new Error(payload.error || 'Unable to run YouTube diagnostic');
+      setYoutubeDiagnostic(payload);
+    } catch (reason) {
+      setYoutubeDiagnosticMessage(reason instanceof Error ? reason.message : 'Unable to run YouTube diagnostic');
+    } finally {
+      setYoutubeDiagnosticLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (session.token) void runDriveDiagnostic();
+    if (session.token) void runYoutubeDiagnostic();
   }, [session.token]);
 
   if (!session.token) return <AdminLogin onLogin={session.setToken} />;
@@ -63,6 +90,23 @@ export default function AdminDashboard() {
           <View style={styles.driveCopy}>
             <Text style={styles.panelTitle}>Google Drive connection</Text>
             <Text style={styles.cardText}>Secure admin-only verification of the Torat Sion media folder.</Text>
+          </View>
+          <View style={styles.drivePanel}>
+            <View style={styles.driveHeading}>
+              <View style={styles.driveCopy}>
+                <Text style={styles.panelTitle}>YouTube synchronization</Text>
+                <Text style={styles.cardText}>All discovered uploads, live broadcasts, and archived livestreams from both configured channels.</Text>
+              </View>
+              <Pressable disabled={youtubeDiagnosticLoading} onPress={() => void runYoutubeDiagnostic()} style={[styles.action, youtubeDiagnosticLoading && styles.disabled]}><Text style={styles.actionText}>{youtubeDiagnosticLoading ? 'Syncing...' : 'Run sync check'}</Text></Pressable>
+            </View>
+            {youtubeDiagnosticMessage && <Text style={styles.error}>{youtubeDiagnosticMessage}</Text>}
+            {youtubeDiagnostic && <View style={styles.diagnosticGrid}>
+              <Diagnostic label="Total unique videos" value={String(youtubeDiagnostic.totalVideos ?? 0)} />
+              <Diagnostic label="Live now" value={String(youtubeDiagnostic.liveVideos ?? 0)} />
+              <Diagnostic label="Upcoming" value={String(youtubeDiagnostic.upcomingVideos ?? 0)} />
+              <Diagnostic label="Archived livestreams" value={String(youtubeDiagnostic.archivedLiveVideos ?? 0)} />
+              {youtubeDiagnostic.sources?.map((source) => <View key={source.key} style={styles.diagnosticItem}><Text style={styles.diagnosticLabel}>{source.label}</Text><Text style={styles.diagnosticValue}>{source.error || `Found ${source.diagnostics?.discoveredCount ?? 0} of ${source.diagnostics?.totalRetrieved ?? 0} retrieved uploads · live ${source.diagnostics?.liveCount ?? 0} · archived ${source.diagnostics?.archivedLiveCount ?? 0}`}</Text></View>)}
+            </View>}
           </View>
           <Pressable disabled={driveDiagnosticLoading} onPress={() => void runDriveDiagnostic()} style={[styles.action, driveDiagnosticLoading && styles.disabled]}>
             <Text style={styles.actionText}>{driveDiagnosticLoading ? 'Checking...' : 'Run check'}</Text>

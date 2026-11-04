@@ -45,15 +45,13 @@ export function VideoModal({ video, onClose }: { video: ShowcaseVideo | null; on
 
 export function InlineYouTubePlayer({ video }: { video: ShowcaseVideo }) {
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  if (failed) return <View style={styles.playerError}><Text style={styles.playerErrorTitle}>This video cannot be embedded</Text><Text style={styles.playerErrorText}>Try opening the dedicated player below.</Text><Pressable accessibilityLabel={`Open ${video.title} in YouTube`} onPress={() => typeof window !== 'undefined' && window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank')} style={styles.playerLink}><Text style={styles.playerLinkText}>Open dedicated player</Text></Pressable></View>;
   return <View style={styles.inlinePlayer}>{loading && <View style={styles.playerLoading}><Text style={styles.playerLoadingText}>Loading player…</Text></View>}{React.createElement('iframe', {
     src: `${video.embedUrl}?autoplay=1&rel=0`,
     title: video.title,
     allow: 'autoplay; encrypted-media; picture-in-picture',
     allowFullScreen: true,
     onLoad: () => setLoading(false),
-    onError: () => { setLoading(false); setFailed(true); },
+    onError: () => setLoading(false),
     style: { border: 0, height: '100%', width: '100%' },
   })}</View>;
 }

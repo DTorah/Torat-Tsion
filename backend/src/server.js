@@ -352,7 +352,12 @@ function youtubeDurationSeconds(value) {
 async function youtubeRequest(resource, params) {
   const query = new URLSearchParams({ ...params, key: youtubeApiKey });
   const response = await fetch(`https://www.googleapis.com/youtube/v3/${resource}?${query}`);
-  if (!response.ok) throw new Error(`YouTube API request failed (${response.status})`);
+  if (!response.ok) {
+    const error = new Error(`YouTube API request failed (${response.status})`);
+    error.status = response.status;
+    error.resource = resource;
+    throw error;
+  }
   return response.json();
 }
 
@@ -390,7 +395,6 @@ function youtubeConfigurationStatus() {
 }
 
 async function resolveYoutubeSource(source) {
-  if (source.channelId || source.playlistId) return source;
   const lookup = source.forHandle ? { forHandle: source.forHandle } : { forUsername: source.forUsername };
   const channel = await youtubeRequest('channels', {
     part: 'contentDetails,snippet',
@@ -398,11 +402,106 @@ async function resolveYoutubeSource(source) {
     maxResults: '1',
   });
   const item = channel.items?.[0];
+  if (!item?.id) {
+    const error = new Error(`YouTube channel was not found for ${source.key}`);
+    error.code = 'youtube_channel_not_found';
+    throw error;
+  }
   return {
     ...source,
-    channelId: item?.id || '',
-    playlistId: item?.contentDetails?.relatedPlaylists?.uploads || '',
+    channelId: source.channelId || item.id,
+    playlistId: source.playlistId || item.contentDetails?.relatedPlaylists?.uploads || '',
     resolvedChannelTitle: item?.snippet?.title || source.label,
+  };
+}
+
+async function youtubePlaylistItems(playlistId) {
+  const items = [];
+  let pageToken = '';
+  do {
+    const page = await youtubeRequest('playlistItems', {
+      part: 'snippet,contentDetails,status',
+      playlistId,
+      maxResults: '50',
+      ...(pageToken ? { pageToken } : {}),
+    });
+    items.push(...(page.items || []));
+    pageToken = page.nextPageToken || '';
+  } while (pageToken);
+  return items;
+}
+
+function youtubeLiveState(detail) {
+  const liveBroadcastContent = detail?.snippet?.liveBroadcastContent;
+  const liveDetails = detail?.liveStreamingDetails;
+  if (liveBroadcastContent === 'live') return 'live';
+  if (liveBroadcastContent === 'upcoming') return 'upcoming';
+  if (liveDetails?.actualStartTime || liveDetails?.actualEndTime) return 'archived';
+  return 'none';
+}
+
+async function youtubeSourceVideos(source, query = '') {
+  const resolved = await resolveYoutubeSource(source);
+  if (!resolved.playlistId) {
+    const error = new Error(`Uploads playlist was not found for ${source.key}`);
+    error.code = 'youtube_uploads_playlist_missing';
+    throw error;
+  }
+  const items = (await youtubePlaylistItems(resolved.playlistId)).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
+  const ids = [...new Set(items.map((item) => item.contentDetails.videoId))];
+  const details = [];
+  for (let index = 0; index < ids.length; index += 50) {
+    const batch = ids.slice(index, index + 50);
+    const response = await youtubeRequest('videos', {
+      part: 'snippet,contentDetails,liveStreamingDetails,status',
+      id: batch.join(','),
+      maxResults: '50',
+    });
+    details.push(...(response.items || []));
+  }
+  const detailById = new Map(details.map((item) => [item.id, item]));
+  const normalizedQuery = query.trim().toLowerCase();
+  const videos = items.map((item) => {
+    const id = item.contentDetails.videoId;
+    const detail = detailById.get(id);
+    const snippet = detail?.snippet || item.snippet || {};
+    const liveStatus = youtubeLiveState(detail);
+    return {
+      id,
+      title: String(snippet.title || 'YouTube class'),
+      description: String(snippet.description || ''),
+      publishedAt: snippet.publishedAt || null,
+      channelTitle: String(snippet.channelTitle || resolved.resolvedChannelTitle || source.label),
+      thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
+      durationSeconds: youtubeDurationSeconds(detail?.contentDetails?.duration),
+      liveStatus,
+      isLive: liveStatus === 'live',
+      isUpcoming: liveStatus === 'upcoming',
+      actualStartTime: detail?.liveStreamingDetails?.actualStartTime || null,
+      actualEndTime: detail?.liveStreamingDetails?.actualEndTime || null,
+      watchUrl: `https://www.youtube.com/watch?v=${id}`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
+      source: 'YouTube',
+      sourceKey: source.key,
+      sourceLabel: source.label,
+    };
+  }).filter((video) => !normalizedQuery || `${video.title} ${video.description}`.toLowerCase().includes(normalizedQuery));
+  return {
+    key: source.key,
+    label: source.label,
+    url: source.url,
+    channelId: resolved.channelId,
+    playlistId: resolved.playlistId,
+    videos,
+    diagnostics: {
+      discoveredCount: videos.length,
+      totalRetrieved: items.length,
+      liveCount: videos.filter((video) => video.isLive).length,
+      upcomingCount: videos.filter((video) => video.isUpcoming).length,
+      archivedLiveCount: videos.filter((video) => video.liveStatus === 'archived').length,
+      channelId: resolved.channelId,
+      playlistId: resolved.playlistId,
+    },
   };
 }
 
@@ -414,51 +513,21 @@ async function youtubeVideos(query = '') {
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
   const sourceResults = await Promise.all(youtubeSources.map(async (source) => {
-    const resolved = await resolveYoutubeSource(source);
-    if (!resolved.playlistId) return { ...source, videos: [] };
-    const playlist = await youtubeRequest('playlistItems', {
-      part: 'snippet,contentDetails',
-      playlistId: resolved.playlistId,
-      maxResults: '24',
-    });
-    let items = (playlist.items || []).filter((item) => youtubeVideoId(item.contentDetails?.videoId));
-    if (query.trim()) {
-      const normalizedQuery = query.trim().toLowerCase();
-      items = items.filter((item) => `${item.snippet?.title || ''} ${item.snippet?.description || ''}`.toLowerCase().includes(normalizedQuery));
+    try {
+      return await youtubeSourceVideos(source, query);
+    } catch (error) {
+      return {
+        key: source.key,
+        label: source.label,
+        url: source.url,
+        videos: [],
+        error: error instanceof Error ? error.message : 'YouTube source retrieval failed',
+        diagnostics: { discoveredCount: 0, totalRetrieved: 0, liveCount: 0, upcomingCount: 0, archivedLiveCount: 0 },
+      };
     }
-    const ids = [...new Set(items.map((item) => item.contentDetails.videoId))];
-    const details = ids.length ? await youtubeRequest('videos', {
-      part: 'snippet,contentDetails',
-      id: ids.join(','),
-      maxResults: '50',
-    }) : { items: [] };
-    const detailById = new Map((details.items || []).map((item) => [item.id, item]));
-    return {
-      key: source.key,
-      label: source.label,
-      url: source.url,
-      videos: items.map((item) => {
-        const id = item.contentDetails.videoId;
-        const detail = detailById.get(id);
-        const snippet = detail?.snippet || item.snippet || {};
-        return {
-          id,
-          title: String(snippet.title || 'YouTube class'),
-          description: String(snippet.description || ''),
-          publishedAt: snippet.publishedAt || null,
-          channelTitle: String(snippet.channelTitle || resolved.resolvedChannelTitle || source.label),
-          thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || null,
-          durationSeconds: youtubeDurationSeconds(detail?.contentDetails?.duration),
-          watchUrl: `https://www.youtube.com/watch?v=${id}`,
-          embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
-          source: 'YouTube',
-          sourceKey: source.key,
-          sourceLabel: source.label,
-        };
-      }),
-    };
   }));
-  const value = { ...configuration, configured: true, sources: sourceResults, videos: sourceResults.flatMap((source) => source.videos) };
+  const deduplicatedVideos = [...new Map(sourceResults.flatMap((source) => source.videos).map((video) => [video.id, video])).values()];
+  const value = { ...configuration, configured: true, sources: sourceResults, videos: deduplicatedVideos };
   youtubeCache.set(cacheKey, { expiresAt: Date.now() + youtubeCacheTtlMs, value });
   return value;
 }
@@ -1205,6 +1274,28 @@ app.get('/api/videos', async (req, res) => {
   } catch (error) {
     console.error('YouTube videos failed', safeErrorCode(error));
     res.status(502).json({ configured: youtubeConfigured(), videos: [], error: 'Video service is temporarily unavailable.' });
+  }
+});
+app.get('/api/admin/youtube/diagnostic', requireAdmin, async (_req, res) => {
+  try {
+    const result = await youtubeVideos();
+    res.json({
+      configured: result.configured,
+      missing: result.missing,
+      sources: result.sources.map((source) => ({
+        key: source.key,
+        label: source.label,
+        error: source.error || null,
+        diagnostics: source.diagnostics,
+      })),
+      totalVideos: result.videos.length,
+      liveVideos: result.videos.filter((video) => video.isLive).length,
+      upcomingVideos: result.videos.filter((video) => video.isUpcoming).length,
+      archivedLiveVideos: result.videos.filter((video) => video.liveStatus === 'archived').length,
+    });
+  } catch (error) {
+    console.error('YouTube diagnostic failed', safeErrorCode(error));
+    res.status(502).json({ error: 'YouTube diagnostics are temporarily unavailable.' });
   }
 });
 app.get('/api/videos/:videoId', async (req, res) => {
