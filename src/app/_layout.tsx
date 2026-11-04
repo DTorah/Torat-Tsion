@@ -7,6 +7,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { ListenerProvider } from '@/components/listener-provider';
 import { MiniPlayer } from '@/components/mini-player';
+import { YouTubePlaybackProvider } from '@/components/video-showcase';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,9 +17,11 @@ export default function TabLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Head><title>Torat Tsion | Torah listening</title><meta name="description" content="Listen to shiurim and Torah recordings from Torat Tsion." /></Head>
       <ListenerProvider>
+        <YouTubePlaybackProvider>
         <AnimatedSplashOverlay />
         {Platform.OS !== 'web' ? <AppTabs /> : <Stack screenOptions={{ headerShown: false }} />}
         <MiniPlayer />
+        </YouTubePlaybackProvider>
       </ListenerProvider>
     </ThemeProvider>
   );
