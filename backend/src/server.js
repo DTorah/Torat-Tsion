@@ -909,7 +909,7 @@ function normalizeHomepageBuilder(value) {
   const draft = source.draft && typeof source.draft === 'object' ? source.draft : defaultContent.homepageBuilder.draft;
   const sections = (Array.isArray(draft.sections) ? draft.sections : []).map((section, index) => {
     const item = section && typeof section === 'object' ? section : {};
-    const type = ['video-shelf', 'featured-banner', 'grid', 'carousel', 'playlist', 'announcement', 'text', 'image', 'category-collection'].includes(item.type) ? item.type : 'video-shelf';
+    const type = ['video-shelf', 'keyword-shelf', 'featured-banner', 'grid', 'carousel', 'playlist', 'announcement', 'text', 'image', 'category-collection'].includes(item.type) ? item.type : 'video-shelf';
     const number = (value, fallback, minimum, maximum) => {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
@@ -925,6 +925,20 @@ function normalizeHomepageBuilder(value) {
       columns: number(item.columns, 4, 1, 8),
       visibleCount: number(item.visibleCount, 12, 1, 100),
       videoIds: Array.isArray(item.videoIds) ? [...new Set(item.videoIds.filter((id) => typeof id === 'string').map((id) => id.slice(0, 80)))].slice(0, 100) : [],
+      manualExcludedIds: Array.isArray(item.manualExcludedIds) ? [...new Set(item.manualExcludedIds.filter((id) => typeof id === 'string').map((id) => id.slice(0, 80)))].slice(0, 100) : [],
+      manualPinnedIds: Array.isArray(item.manualPinnedIds) ? [...new Set(item.manualPinnedIds.filter((id) => typeof id === 'string').map((id) => id.slice(0, 80)))].slice(0, 100) : [],
+      rules: item.rules && typeof item.rules === 'object' ? {
+        keywords: Array.isArray(item.rules.keywords) ? item.rules.keywords.filter((keyword) => typeof keyword === 'string').map((keyword) => keyword.trim().slice(0, 120)).filter(Boolean).slice(0, 100) : [],
+        excludeKeywords: Array.isArray(item.rules.excludeKeywords) ? item.rules.excludeKeywords.filter((keyword) => typeof keyword === 'string').map((keyword) => keyword.trim().slice(0, 120)).filter(Boolean).slice(0, 100) : [],
+        matchMode: item.rules.matchMode === 'all' ? 'all' : 'any',
+        searchDescriptions: item.rules.searchDescriptions !== false,
+        exactPhrase: item.rules.exactPhrase === true,
+        liveOnly: item.rules.liveOnly === true,
+        archivedOnly: item.rules.archivedOnly === true,
+        dateFrom: typeof item.rules.dateFrom === 'string' ? item.rules.dateFrom.slice(0, 30) : '',
+        dateTo: typeof item.rules.dateTo === 'string' ? item.rules.dateTo.slice(0, 30) : '',
+        sort: item.rules.sort === 'oldest' ? 'oldest' : 'newest',
+      } : { keywords: [], excludeKeywords: [], matchMode: 'any', searchDescriptions: true, exactPhrase: false, liveOnly: false, archivedOnly: false, dateFrom: '', dateTo: '', sort: 'newest' },
       responsive: item.responsive && typeof item.responsive === 'object' ? {
         desktop: item.responsive.desktop !== false,
         tablet: item.responsive.tablet !== false,
@@ -1434,10 +1448,48 @@ app.get('/api/time-frame', async (req, res) => {
 });
 app.get('/api/collections', async (_req, res) => { try { const content = await readContent(); res.json({ collections: content.collections.filter((item) => isActive(item)).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)) }); } catch { res.status(500).json({ error: 'Unable to load collections' }); } });
 app.get('/api/collections/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const collection = content.collections.find((item) => item.id === req.params.id && isActive(item)); if (!collection) return res.status(404).json({ error: 'Collection not found' }); const home = buildHome(content, files, covers); res.json({ collection, recordings: (collection.recordingIds || []).map((id) => home._recordingIndex[id]).filter(Boolean) }); } catch { res.status(500).json({ error: 'Unable to load collection' }); } });
+function normalizeShelfText(value) {
+  return String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[.,!?;:()[\]{}"'-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function resolveKeywordShelfVideos(section, videos) {
+  const rules = section.rules || {};
+  const keywords = Array.isArray(rules.keywords) ? rules.keywords.map(normalizeShelfText).filter(Boolean) : [];
+  const excluded = Array.isArray(rules.excludeKeywords) ? rules.excludeKeywords.map(normalizeShelfText).filter(Boolean) : [];
+  const matches = (video) => {
+    const title = normalizeShelfText(video.title);
+    const description = rules.searchDescriptions === false ? '' : normalizeShelfText(video.description);
+    const haystack = `${title} ${description}`.trim();
+    const contains = (keyword) => rules.exactPhrase ? haystack.includes(keyword) : keyword.split(' ').every((part) => haystack.includes(part));
+    const included = !keywords.length || (rules.matchMode === 'all' ? keywords.every(contains) : keywords.some(contains));
+    const excludedMatch = excluded.some(contains);
+    const published = video.publishedAt ? Date.parse(video.publishedAt) : Number.NaN;
+    const from = rules.dateFrom ? Date.parse(rules.dateFrom) : Number.NaN;
+    const to = rules.dateTo ? Date.parse(`${rules.dateTo}T23:59:59Z`) : Number.NaN;
+    return included && !excludedMatch && (!rules.liveOnly || video.isLive) && (!rules.archivedOnly || video.liveStatus === 'archived') && (!Number.isFinite(from) || (Number.isFinite(published) && published >= from)) && (!Number.isFinite(to) || (Number.isFinite(published) && published <= to));
+  };
+  const selected = videos.filter(matches).filter((video) => !(section.manualExcludedIds || []).includes(video.id));
+  const pinned = (section.manualPinnedIds || []).map((id) => videos.find((video) => video.id === id)).filter(Boolean);
+  const merged = [...pinned, ...selected.filter((video) => !pinned.some((item) => item.id === video.id))];
+  return merged.sort((a, b) => {
+    const aTime = a.publishedAt ? Date.parse(a.publishedAt) : Number.NaN;
+    const bTime = b.publishedAt ? Date.parse(b.publishedAt) : Number.NaN;
+    if (Number.isFinite(aTime) && Number.isFinite(bTime)) return rules.sort === 'oldest' ? aTime - bTime : bTime - aTime;
+    if (Number.isFinite(aTime)) return -1;
+    if (Number.isFinite(bTime)) return 1;
+    return 0;
+  }).slice(0, Math.min(100, Number(section.visibleCount) || 100)).map((video) => video.id);
+}
+async function resolvePublishedHomepageBuilder(document) {
+  const videos = (await youtubeVideos()).videos || [];
+  return {
+    ...document,
+    sections: (document.sections || []).map((section) => section.type === 'keyword-shelf' ? { ...section, videoIds: resolveKeywordShelfVideos(section, videos) } : section),
+  };
+}
 app.get('/api/home-builder', async (_req, res) => {
   try {
     const content = await readContent();
-    res.json(content.homepageBuilder.published || content.homepageBuilder.draft);
+    res.json(await resolvePublishedHomepageBuilder(content.homepageBuilder.published || content.homepageBuilder.draft));
   } catch (error) {
     console.error('homepage builder failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to load homepage design' });

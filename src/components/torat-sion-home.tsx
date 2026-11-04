@@ -221,7 +221,7 @@ export function ToratSionHome() {
   const search = () => scrollToSection('all');
   const customSections = (builder?.sections || []).filter((section) => section.enabled !== false);
   const renderCustomSection = (section: BuilderSection) => {
-    if (section.type === 'video-shelf') {
+    if (section.type === 'video-shelf' || section.type === 'keyword-shelf') {
       const selected = section.videoIds?.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video)) || [];
       const sectionVideos = selected.length ? selected : section.source === 'shabbat-shalom' ? shabbatVideos : filtered;
       return <Shelf key={section.id} activeVideoId={activeVideo?.id || null} title={section.title} videos={sectionVideos.slice(0, section.visibleCount || sectionVideos.length)} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />;
