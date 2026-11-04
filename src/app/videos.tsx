@@ -30,27 +30,32 @@ export default function VideosScreen() {
     fetch(apiUrl('/api/videos'))
       .then(async (response) => {
         const value = await response.json() as VideoPayload;
-        if (!response.ok) throw new Error(value.error || 'Unable to load YouTube videos');
+        if (!response.ok) throw new Error(value.error || 'Unable to load classes');
         setPayload(value);
       })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load YouTube videos'))
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load classes'))
       .finally(() => setLoading(false));
   }, [requestedVideo]);
   const normalizedQuery = query.trim().toLowerCase();
-  const sources = useMemo(() => (payload?.sources || []).map((source) => ({
-    ...source,
-    videos: source.videos.filter((video) => !normalizedQuery || `${video.title} ${video.description} ${video.channelTitle || ''}`.toLowerCase().includes(normalizedQuery)),
-  })), [normalizedQuery, payload?.sources]);
+  const videos = useMemo(() => [...new Map((payload?.sources || []).flatMap((source) => source.videos).map((video) => [video.id, video])).values()]
+    .filter((video) => !normalizedQuery || `${video.title} ${video.description}`.toLowerCase().includes(normalizedQuery))
+    .sort((a, b) => {
+      const aTime = a.publishedAt ? Date.parse(a.publishedAt) : Number.NaN;
+      const bTime = b.publishedAt ? Date.parse(b.publishedAt) : Number.NaN;
+      if (Number.isFinite(aTime) && Number.isFinite(bTime)) return bTime - aTime;
+      if (Number.isFinite(aTime)) return -1;
+      if (Number.isFinite(bTime)) return 1;
+      return 0;
+    }), [normalizedQuery, payload?.sources]);
   const isNarrow = width < 900;
   return <ScrollView contentContainerStyle={[styles.page, isNarrow && styles.pageNarrow]}>
     <PublicHeader query={query} setQuery={setQuery} />
-    <View style={styles.hero}><Text style={styles.eyebrow}>TORAT TSION · YOUTUBE VIDEOS</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Watch real classes from Rabbi Isaac Bakhshi and the Shabbat Shalom channel without leaving Torat Tsion. Choose a class below to play it in the embedded YouTube player.</Text><TextInput accessibilityLabel="Search YouTube videos" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
+    <View style={styles.hero}><Text style={styles.eyebrow}>TORAT SION · VIDEO LIBRARY</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Browse the complete Torat Sion class library and play any recording without leaving the site.</Text><TextInput accessibilityLabel="Search classes" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
     <View style={[styles.contentLayout, isNarrow && styles.contentLayoutNarrow]}>
       <View style={styles.videoContent}>
-        {loading ? <Text style={styles.body}>Loading official YouTube classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>YouTube playback is not configured</Text><Text style={styles.body}>The backend needs the server-only environment variable {payload?.missing?.join(', ') || 'YOUTUBE_API_KEY'} in Render. No placeholder videos are shown.</Text></View> : null}
-        {!loading && !error && payload?.configured && sources.map((source) => <View key={source.key} style={styles.sourceSection}><View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>OFFICIAL SOURCE</Text></View></View>{source.videos.length ? <VideoShowcase initialVideoId={requestedVideo} title={source.label} videos={source.videos} /> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes in this source.' : 'No public videos were returned from this source yet.'}</Text>}</View>)}
-        {!loading && !error && payload?.configured && !sources.some((source) => source.videos.length > 0) && <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public videos were returned from either source yet.'}</Text>}
-        <View style={styles.notice}><Text style={styles.noticeTitle}>Torat Sion video library</Text><Text style={styles.body}>Videos are presented inside Torat Sion using the configured video metadata and embedded player. Select any thumbnail to continue watching without leaving this site.</Text></View>
+        {loading ? <Text style={styles.body}>Loading official classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>The video library is not configured</Text><Text style={styles.body}>No placeholder videos are shown until the library is configured.</Text></View> : null}
+        {!loading && !error && payload?.configured && (videos.length ? <VideoShowcase initialVideoId={requestedVideo} title="All Shiurim" videos={videos} /> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public classes were returned yet.'}</Text>)}
+        <View style={styles.notice}><Text style={styles.noticeTitle}>Torat Sion video library</Text><Text style={styles.body}>Select any thumbnail to continue watching without leaving this site.</Text></View>
       </View>
     </View>
   </ScrollView>;

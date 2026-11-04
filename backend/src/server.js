@@ -526,7 +526,15 @@ async function youtubeVideos(query = '') {
       };
     }
   }));
-  const deduplicatedVideos = [...new Map(sourceResults.flatMap((source) => source.videos).map((video) => [video.id, video])).values()];
+  const deduplicatedVideos = [...new Map(sourceResults.flatMap((source) => source.videos).map((video) => [video.id, video])).values()]
+    .sort((a, b) => {
+      const aTime = a.publishedAt ? Date.parse(a.publishedAt) : Number.NaN;
+      const bTime = b.publishedAt ? Date.parse(b.publishedAt) : Number.NaN;
+      if (Number.isFinite(aTime) && Number.isFinite(bTime)) return bTime - aTime;
+      if (Number.isFinite(aTime)) return -1;
+      if (Number.isFinite(bTime)) return 1;
+      return 0;
+    });
   const value = { ...configuration, configured: true, sources: sourceResults, videos: deduplicatedVideos };
   youtubeCache.set(cacheKey, { expiresAt: Date.now() + youtubeCacheTtlMs, value });
   return value;

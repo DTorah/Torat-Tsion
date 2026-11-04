@@ -103,6 +103,17 @@ function uniqueVideos(videos: Video[]) {
   return [...new Map(videos.map((video) => [video.id, video])).values()];
 }
 
+function sortVideos(videos: Video[]) {
+  return [...videos].sort((a, b) => {
+    const aTime = a.publishedAt ? Date.parse(a.publishedAt) : Number.NaN;
+    const bTime = b.publishedAt ? Date.parse(b.publishedAt) : Number.NaN;
+    if (Number.isFinite(aTime) && Number.isFinite(bTime)) return bTime - aTime;
+    if (Number.isFinite(aTime)) return -1;
+    if (Number.isFinite(bTime)) return 1;
+    return 0;
+  });
+}
+
 function formatPublished(date?: string | null) {
   if (!date) return 'Rabbi Bakhshi';
   const parsed = new Date(date);
@@ -137,7 +148,7 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
       <View><Text style={styles.brandName}>Torat Sion</Text><Text style={styles.brandCaption}>RABBI BAKHSHI</Text></View>
     </Pressable>
     <View style={styles.nav}>{items.map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={[styles.navItem, index === 0 ? styles.navItemActive : null]}><Text style={styles.navGlyph}>{['⌂', '✦', '▤', '◒', '◈', '▥', '★', '◷'][index]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable></View>
-    <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Official classes from Rabbi Bakhshi's YouTube channels.</Text></View>
+    <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Official classes from the Torat Sion library.</Text></View>
   </View>;
 }
 
@@ -163,6 +174,20 @@ function Shelf({ id, title, videos, favorites, activeVideoId, onFavorite, onPlay
   return <View nativeID={id} style={styles.shelf}><View style={styles.shelfHeader}><View><Text style={styles.shelfTitle}>{title}</Text><Text style={styles.shelfRule} /></View>{onViewAll && <Pressable onPress={onViewAll}><Text style={styles.viewAll}>View all →</Text></Pressable>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfTrack}>{videos.map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} />)}</ScrollView></View>;
 }
 
+function AllShiurimGrid({ videos, favorites, activeVideoId, onFavorite, onPlay }: { videos: Video[]; favorites: Set<string>; activeVideoId: string | null; onFavorite: (id: string) => void; onPlay: (video: Video) => void }) {
+  const { width } = useWindowDimensions();
+  const [parshaFilter, setParshaFilter] = useState('');
+  const [topicFilter, setTopicFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [visibleCount, setVisibleCount] = useState(16);
+  const columns = width >= 1100 ? 4 : width >= 700 ? 3 : width >= 460 ? 2 : 1;
+  const gap = 14;
+  const cardWidth = Math.max(220, Math.floor((Math.min(width - 44, 1280) - gap * (columns - 1)) / columns));
+  const filtered = videos.filter((video) => (!parshaFilter || findParsha(video) === parshaFilter) && (!topicFilter || findTopic(video) === topicFilter) && (!dateFilter || Boolean(video.publishedAt && video.publishedAt.slice(0, 10) === dateFilter)));
+  const options = (values: string[]) => values.filter((value, index) => values.indexOf(value) === index).slice(0, 12);
+  return <View nativeID="all" style={styles.library}><View style={styles.shelfHeader}><View><Text style={styles.shelfTitle}>All Shiurim</Text><Text style={styles.shelfRule} /></View><Text style={styles.libraryCount}>{filtered.length.toLocaleString()} classes</Text></View><View style={styles.filterRow}><TextInput accessibilityLabel="Filter by date" onChangeText={setDateFilter} placeholder="Date YYYY-MM-DD" placeholderTextColor="#8390a3" style={styles.filterInput} value={dateFilter} />{options(parshiyot).slice(0, 6).map((value) => <Pressable key={value} onPress={() => setParshaFilter(parshaFilter === value ? '' : value)} style={[styles.filterChip, parshaFilter === value && styles.filterChipActive]}><Text style={styles.filterChipText}>{value}</Text></Pressable>)}{options(topicMatchers.map(([value]) => value)).map((value) => <Pressable key={value} onPress={() => setTopicFilter(topicFilter === value ? '' : value)} style={[styles.filterChip, topicFilter === value && styles.filterChipActive]}><Text style={styles.filterChipText}>{value}</Text></Pressable>)}</View>{filtered.length ? <View style={[styles.libraryGrid, { gap }]}>{filtered.slice(0, visibleCount).map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} />)}</View> : <Text style={styles.emptyLibrary}>No classes match these filters.</Text>}{visibleCount < filtered.length && <Pressable onPress={() => setVisibleCount((count) => count + 16)} style={styles.loadMore}><Text style={styles.loadMoreText}>Load more classes</Text></Pressable>}</View>;
+}
+
 export function ToratSionHome() {
   const { width } = useWindowDimensions();
   const [videos, setVideos] = useState<Video[]>([]);
@@ -178,7 +203,7 @@ export function ToratSionHome() {
   const { activeVideo, playVideo: playSharedVideo } = useYouTubePlayback();
 
   useEffect(() => { Promise.all([AsyncStorage.getItem(favoritesKey), AsyncStorage.getItem('torat-sion.youtube-recent')]).then(([favorites, recent]) => { if (favorites) setFavoriteIds(new Set(JSON.parse(favorites))); if (recent) setRecentIds(JSON.parse(recent)); }).catch(() => {}); }, []);
-  useEffect(() => { fetch(apiUrl('/api/videos')).then(async (response) => { const payload = await response.json() as VideoPayload; if (!response.ok || payload.configured === false) throw new Error(payload.error || 'YouTube classes are unavailable right now.'); setSources(payload.sources || []); setVideos(uniqueVideos((payload.sources || []).flatMap((source) => source.videos))); }).catch((reason) => setError(reason instanceof Error ? reason.message : 'YouTube classes are unavailable right now.')).finally(() => setLoading(false)); fetch(apiUrl('/api/home-builder')).then((response) => response.ok ? response.json() as Promise<BuilderDocument> : null).then(setBuilder).catch(() => setBuilder(null)); }, []);
+  useEffect(() => { fetch(apiUrl('/api/videos')).then(async (response) => { const payload = await response.json() as VideoPayload; if (!response.ok || payload.configured === false) throw new Error(payload.error || 'Classes are unavailable right now.'); setSources(payload.sources || []); setVideos(sortVideos(uniqueVideos((payload.sources || []).flatMap((source) => source.videos)))); }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Classes are unavailable right now.')).finally(() => setLoading(false)); fetch(apiUrl('/api/home-builder')).then((response) => response.ok ? response.json() as Promise<BuilderDocument> : null).then(setBuilder).catch(() => setBuilder(null)); }, []);
 
   const featured = useMemo(() => videos.slice(0, 5), [videos]);
   useEffect(() => { if (featured.length < 2) return; const timer = setInterval(() => setFeatureIndex((index) => (index + 1) % featured.length), 8000); return () => clearInterval(timer); }, [featured.length]);
@@ -187,8 +212,8 @@ export function ToratSionHome() {
   const trending = filtered.slice(3);
   const parsha = filtered.filter((video) => findParsha(video));
   const topics = filtered.filter((video) => findTopic(video) !== 'Torah Insights');
-  const shabbatVideos = (sources.find((source) => source.key === 'shabbat-shalom')?.videos || []).filter((video) => !query.trim() || metadata(video).toLowerCase().includes(query.trim().toLowerCase()));
-  const liveVideos = filtered.filter((video) => video.isLive || video.isUpcoming);
+  const shabbatVideos = sortVideos((sources.find((source) => source.key === 'shabbat-shalom')?.videos || []).filter((video) => !query.trim() || metadata(video).toLowerCase().includes(query.trim().toLowerCase())));
+  const liveVideos = sortVideos(filtered.filter((video) => video.isLive || video.isUpcoming));
   const seriesGroups = useMemo(() => { const groups = new Map<string, Video[]>(); filtered.forEach((video) => { const name = seriesName(video); if (name) groups.set(name, [...(groups.get(name) || []), video]); }); return [...groups.entries()].filter(([, group]) => group.length > 1).slice(0, 6).map(([label, group]) => ({ label, videos: group })); }, [filtered]);
   const toggleFavorite = (id: string) => setFavoriteIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); void AsyncStorage.setItem(favoritesKey, JSON.stringify([...next])); return next; });
   const playVideo = (video: Video) => { playSharedVideo(video); setRecentIds((current) => { const next = [video.id, ...current.filter((id) => id !== video.id)].slice(0, 12); void AsyncStorage.setItem('torat-sion.youtube-recent', JSON.stringify(next)); return next; }); };
@@ -208,7 +233,7 @@ export function ToratSionHome() {
   return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#f7f5f0' }]}><Sidebar onSearch={search} /><ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}>
     <View style={styles.topbar}><View><Text style={styles.context}>TORAT SION · RABBI BAKHSHI</Text><Text style={styles.pageTitle}>Discover Torah that stays with you.</Text></View><View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput accessibilityLabel="Search Rabbi Bakhshi shiurim" onChangeText={setQuery} onSubmitEditing={search} placeholder="Search shiurim, Parsha, topics..." placeholderTextColor="#8390a3" style={styles.searchInput} value={query} /></View></View>
     {loading ? <View style={styles.loading}><ActivityIndicator color="#1d5fc4" size="large" /><Text style={styles.loadingText}>Gathering Rabbi Bakhshi's latest shiurim…</Text></View> : error ? <View style={styles.errorState}><Text style={styles.errorTitle}>The library is taking a moment</Text><Text style={styles.errorText}>{error}</Text></View> : activeFeature ? <View style={styles.hero}><Image contentFit="cover" source={{ uri: activeFeature.thumbnailUrl || '' }} style={styles.heroImage} /><View style={styles.heroShade} /><View style={styles.heroContent}><Text style={styles.heroEyebrow}>FEATURED SHIUR · RABBI BAKHSHI</Text><Text numberOfLines={2} style={styles.heroTitle}>{activeFeature.title}</Text><Text numberOfLines={2} style={styles.heroDescription}>{activeFeature.description || 'Explore an official Rabbi Bakhshi class from the Torat Sion collection.'}</Text><View style={styles.heroActions}><Pressable onPress={() => playVideo(activeFeature)} style={styles.listenButton}><Text style={styles.listenButtonText}>▶      Play Shiur</Text></Pressable><Pressable onPress={() => toggleFavorite(activeFeature.id)} style={styles.heroFavorite}><Text style={styles.heroFavoriteText}>{favoriteIds.has(activeFeature.id) ? '★ Saved' : '☆ Save'}</Text></Pressable></View><View style={styles.heroDots}>{featured.map((video, index) => <Pressable key={video.id} accessibilityLabel={`Show featured shiur ${index + 1}`} onPress={() => setFeatureIndex(index)} style={[styles.heroDot, index === featureIndex && styles.heroDotActive]} />)}</View></View></View> : <View style={styles.errorState}><Text style={styles.errorTitle}>No public classes are available yet.</Text></View>}
-    {!loading && !error && <>{customSections.map(renderCustomSection)}<Shelf id="new" activeVideoId={activeVideo?.id || null} title="New Shiurim" videos={latest} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="live" activeVideoId={activeVideo?.id || null} title="Live & Upcoming Broadcasts" videos={liveVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="shabbat-shalom" activeVideoId={activeVideo?.id || null} title="Shabbat Shalom by Rabbi Bakhshi" videos={shabbatVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="recent" activeVideoId={activeVideo?.id || null} title="Continue Listening" videos={recentIds.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf title="Trending Shiurim" activeVideoId={activeVideo?.id || null} videos={trending} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="parsha" activeVideoId={activeVideo?.id || null} title="Shiurim by Parsha" videos={parsha} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="topics" activeVideoId={activeVideo?.id || null} title="Explore Torah Topics" videos={topics} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><View nativeID="series">{seriesGroups.map((group) => <Shelf key={group.label} activeVideoId={activeVideo?.id || null} title={`Series · ${group.label}`} videos={group.videos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />)}</View><Shelf id="favorites" activeVideoId={activeVideo?.id || null} title="Favorites" videos={filtered.filter((video) => favoriteIds.has(video.id))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="all" activeVideoId={activeVideo?.id || null} title={query ? `Search results · ${query}` : 'All Shiurim'} videos={filtered} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => setQuery('')} /></>}
+    {!loading && !error && <>{customSections.map(renderCustomSection)}<Shelf id="new" activeVideoId={activeVideo?.id || null} title="New Shiurim" videos={latest} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="live" activeVideoId={activeVideo?.id || null} title="Live & Upcoming Broadcasts" videos={liveVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="shabbat-shalom" activeVideoId={activeVideo?.id || null} title="Shabbat Shalom Classes" videos={shabbatVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="recent" activeVideoId={activeVideo?.id || null} title="Continue Listening" videos={recentIds.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf title="Trending Shiurim" activeVideoId={activeVideo?.id || null} videos={trending} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="parsha" activeVideoId={activeVideo?.id || null} title="Shiurim by Parsha" videos={parsha} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="topics" activeVideoId={activeVideo?.id || null} title="Explore Torah Topics" videos={topics} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><View nativeID="series">{seriesGroups.map((group) => <Shelf key={group.label} activeVideoId={activeVideo?.id || null} title={`Series · ${group.label}`} videos={group.videos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />)}</View><Shelf id="favorites" activeVideoId={activeVideo?.id || null} title="Favorites" videos={filtered.filter((video) => favoriteIds.has(video.id))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><AllShiurimGrid videos={filtered} favorites={favoriteIds} activeVideoId={activeVideo?.id || null} onFavorite={toggleFavorite} onPlay={playVideo} /></>}
   </ScrollView></View>;
 }
 
@@ -293,4 +318,15 @@ const styles: Record<string, any> = StyleSheet.create({
   customSectionSubtitle: { color: '#718099', fontSize: 14, marginTop: 8 },
   customSectionButton: { alignSelf: 'flex-start', backgroundColor: '#0052CC', borderRadius: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 9 },
   customSectionButtonText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  library: { marginBottom: 32, marginTop: 26 },
+  libraryCount: { color: '#718099', fontSize: 13 },
+  filterRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 14, marginTop: 12 },
+  filterInput: { backgroundColor: '#fff', borderColor: '#d8e0ea', borderRadius: 8, borderWidth: 1, color: '#172844', minHeight: 36, paddingHorizontal: 10, width: 130 },
+  filterChip: { backgroundColor: '#fff', borderColor: '#d8e0ea', borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  filterChipActive: { backgroundColor: '#dbeaff', borderColor: '#0052CC' },
+  filterChipText: { color: '#52627a', fontSize: 11, fontWeight: '700' },
+  libraryGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  emptyLibrary: { color: '#718099', paddingVertical: 20 },
+  loadMore: { alignSelf: 'center', backgroundColor: '#0052CC', borderRadius: 10, marginTop: 20, paddingHorizontal: 18, paddingVertical: 11 },
+  loadMoreText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

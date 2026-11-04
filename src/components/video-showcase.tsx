@@ -65,7 +65,6 @@ export function VideoCard({ video, onPlay, playing = false }: { video: ShowcaseV
       </Pressable>}
     </View>
     <Text numberOfLines={2} style={styles.title}>{video.title}</Text>
-    {video.sourceLabel ? <Text numberOfLines={1} style={styles.subtitle}>{video.sourceLabel}</Text> : null}
   </View>;
 }
 

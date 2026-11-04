@@ -52,7 +52,7 @@ type Rabbi = { id: string; name: string; description?: string; photoUrl?: string
 type Category = { id: string; name: string; description?: string };
 type CarouselItem = { id: string; kind: string; title: string; subtitle?: string; coverUrl?: string | null; recordingId?: string | null; countdownAt?: string | null; link?: string | null };
 type HomePayload = { recordings?: Recording[]; folders?: DriveFolder[]; rabbis?: Rabbi[]; categories?: Category[]; featuredShiurim?: Recording[]; newThisWeek?: Recording[]; trending?: Recording[]; carousel?: CarouselItem[] };
-type YouTubeVideo = { id: string; title: string; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; embedUrl: string };
+type YouTubeVideo = { id: string; title: string; publishedAt?: string | null; thumbnailUrl?: string | null; channelTitle?: string; sourceLabel?: string; embedUrl: string };
 type YouTubeSource = { key: string; label: string; videos: YouTubeVideo[] };
 type FolderPayload = { folder?: DriveFolder; recordings?: Recording[]; folders?: DriveFolder[]; error?: string };
 type MinyanPreview = { name: string; time: string; location?: string; day?: string };
@@ -290,17 +290,17 @@ function AdminCategoryShelf({ category, recordings }: { category: Category; reco
   return <View style={styles.section}><SectionTitle link={`/categories/${category.id}`} title={category.name} /><View style={styles.shelfTrack}><Pressable accessibilityLabel={`Scroll ${category.name} left`} onPress={() => scrollRef.current?.scrollTo({ x: 0, animated: true })} style={styles.shelfArrow}><Text style={styles.shelfArrowText}>‹</Text></Pressable><ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}{!recordings.length && <Text style={styles.emptyShelf}>No matching shiurim yet.</Text>}</ScrollView><Pressable accessibilityLabel={`Scroll ${category.name} right`} onPress={() => scrollRef.current?.scrollToEnd({ animated: true })} style={styles.shelfArrow}><Text style={styles.shelfArrowText}>›</Text></Pressable></View></View>;
 }
 
-function YouTubeShelf({ source }: { source: YouTubeSource }) {
-  if (!source.videos.length) return null;
-  return <View style={styles.section}><VideoShowcase title={`${source.label} — YouTube`} videos={source.videos.slice(0, 8)} /></View>;
+function YouTubeShelf({ videos }: { videos: YouTubeVideo[] }) {
+  if (!videos.length) return null;
+  return <View style={styles.section}><VideoShowcase title="Latest Shiurim" videos={videos} /></View>;
 }
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
-  if (loading) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><ActivityIndicator color="#2d6cdf" /><Text style={styles.stateText}>Loading official YouTube classes</Text></View></View>;
-  if (error) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>YouTube classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
-  const visibleSources = sources.filter((source) => source.videos.length > 0);
-  if (!visibleSources.length) return <View style={styles.section}><SectionTitle title="YouTube Classes" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public YouTube classes are available right now.</Text></View></View>;
-  return <>{visibleSources.map((source) => <YouTubeShelf key={source.key} source={source} />)}</>;
+  if (loading) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><ActivityIndicator color="#2d6cdf" /><Text style={styles.stateText}>Loading official classes</Text></View></View>;
+  if (error) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>Classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
+  const videos = sources.flatMap((source) => source.videos).sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || ''));
+  if (!videos.length) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public classes are available right now.</Text></View></View>;
+  return <YouTubeShelf videos={videos} />;
 }
 
 function useCountdownLabel(countdownAt?: string | null) {
