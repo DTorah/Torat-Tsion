@@ -18,7 +18,7 @@ type Video = ShowcaseVideo & {
 
 type Source = { key: string; label: string; videos: Video[] };
 type VideoPayload = { configured?: boolean; sources?: Source[]; error?: string };
-type BuilderSection = { id: string; type: string; title: string; subtitle?: string; enabled?: boolean; background?: string; textColor?: string; source?: string; visibleCount?: number };
+type BuilderSection = { id: string; type: string; title: string; subtitle?: string; description?: string; enabled?: boolean; background?: string; textColor?: string; source?: string; visibleCount?: number; videoIds?: string[]; banner?: { videoId?: string; title?: string; description?: string; buttonText?: string } };
 type BuilderDocument = { design?: { background?: string; text?: string }; sections?: BuilderSection[] };
 
 const favoritesKey = 'torat-sion.youtube-favorites';
@@ -197,10 +197,12 @@ export function ToratSionHome() {
   const customSections = (builder?.sections || []).filter((section) => section.enabled !== false);
   const renderCustomSection = (section: BuilderSection) => {
     if (section.type === 'video-shelf') {
-      const sectionVideos = section.source === 'shabbat-shalom' ? shabbatVideos : filtered;
+      const selected = section.videoIds?.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video)) || [];
+      const sectionVideos = selected.length ? selected : section.source === 'shabbat-shalom' ? shabbatVideos : filtered;
       return <Shelf key={section.id} activeVideoId={activeVideo?.id || null} title={section.title} videos={sectionVideos.slice(0, section.visibleCount || sectionVideos.length)} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />;
     }
-    return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}><Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#172844' }]}>{section.title}</Text>{section.subtitle ? <Text style={styles.customSectionSubtitle}>{section.subtitle}</Text> : null}</View>;
+    const bannerVideo = section.banner?.videoId ? videos.find((video) => video.id === section.banner?.videoId) : null;
+    return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#172844' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
   };
 
   return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#f7f5f0' }]}><Sidebar onSearch={search} /><ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}>
@@ -286,6 +288,9 @@ const styles: Record<string, any> = StyleSheet.create({
   errorTitle: { color: '#172844', fontSize: 21, fontWeight: '800' },
   errorText: { color: '#718099', fontSize: 14, marginTop: 9, textAlign: 'center' },
   customSection: { borderRadius: 16, marginBottom: 24, padding: 22 },
+  customSectionImage: { borderRadius: 12, height: 190, marginBottom: 14, width: '100%' },
   customSectionTitle: { fontSize: 22, fontWeight: '800' },
   customSectionSubtitle: { color: '#718099', fontSize: 14, marginTop: 8 },
+  customSectionButton: { alignSelf: 'flex-start', backgroundColor: '#0052CC', borderRadius: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 9 },
+  customSectionButtonText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 });

@@ -899,7 +899,33 @@ const defaultContent = {
 function normalizeHomepageBuilder(value) {
   const source = value && typeof value === 'object' ? value : {};
   const draft = source.draft && typeof source.draft === 'object' ? source.draft : defaultContent.homepageBuilder.draft;
-  const sections = Array.isArray(draft.sections) ? draft.sections : [];
+  const sections = (Array.isArray(draft.sections) ? draft.sections : []).map((section, index) => {
+    const item = section && typeof section === 'object' ? section : {};
+    const type = ['video-shelf', 'featured-banner', 'grid', 'carousel', 'playlist', 'announcement', 'text', 'image', 'category-collection'].includes(item.type) ? item.type : 'video-shelf';
+    const number = (value, fallback, minimum, maximum) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
+    };
+    return {
+      ...item,
+      id: typeof item.id === 'string' && item.id.trim() ? item.id.trim().slice(0, 120) : `section-${index + 1}`,
+      type,
+      title: typeof item.title === 'string' ? item.title.slice(0, 240) : 'Homepage section',
+      subtitle: typeof item.subtitle === 'string' ? item.subtitle.slice(0, 500) : '',
+      enabled: item.enabled !== false,
+      layout: ['shelf', 'grid', 'featured'].includes(item.layout) ? item.layout : (type === 'featured-banner' ? 'featured' : type === 'grid' ? 'grid' : 'shelf'),
+      columns: number(item.columns, 4, 1, 8),
+      visibleCount: number(item.visibleCount, 12, 1, 100),
+      videoIds: Array.isArray(item.videoIds) ? [...new Set(item.videoIds.filter((id) => typeof id === 'string').map((id) => id.slice(0, 80)))].slice(0, 100) : [],
+      responsive: item.responsive && typeof item.responsive === 'object' ? {
+        desktop: item.responsive.desktop !== false,
+        tablet: item.responsive.tablet !== false,
+        mobile: item.responsive.mobile !== false,
+        cardWidth: number(item.responsive.cardWidth, 320, 180, 640),
+        spacing: number(item.responsive.spacing, 24, 0, 160),
+      } : { desktop: true, tablet: true, mobile: true, cardWidth: 320, spacing: 24 },
+    };
+  });
   return {
     draft: { ...defaultContent.homepageBuilder.draft, ...draft, sections },
     published: source.published && typeof source.published === 'object' ? source.published : null,
