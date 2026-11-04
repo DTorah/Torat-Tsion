@@ -878,6 +878,12 @@ async function readMapping() { const bytes = await readStoredFile('covers.json')
 async function writeMapping(mapping) { await writeStoredFile('covers.json', `${JSON.stringify(mapping, null, 2)}\n`, 'Update Torat Tsion cover mappings'); }
 const defaultContent = {
   settings: { homepageSections: ['announcement', 'featuredRabbis', 'featuredShiurim', 'newThisWeek', 'trending', 'categories', 'playlists', 'radio', 'advertisements'] },
+  homepageBuilder: {
+    draft: { design: { theme: 'torat-sion', background: '#F8F9FA', accent: '#0052CC', text: '#111827' }, sections: [] },
+    published: null,
+    history: [],
+    deleted: [],
+  },
   categories: [],
   rabbis: [],
   recordings: {},
@@ -890,7 +896,23 @@ const defaultContent = {
   carousel: [],
   minyanim: [],
 };
-async function readContent() { const bytes = await readStoredFile('content.json'); return bytes ? { ...defaultContent, ...JSON.parse(bytes.toString('utf8')) } : { ...defaultContent }; }
+function normalizeHomepageBuilder(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const draft = source.draft && typeof source.draft === 'object' ? source.draft : defaultContent.homepageBuilder.draft;
+  const sections = Array.isArray(draft.sections) ? draft.sections : [];
+  return {
+    draft: { ...defaultContent.homepageBuilder.draft, ...draft, sections },
+    published: source.published && typeof source.published === 'object' ? source.published : null,
+    history: Array.isArray(source.history) ? source.history.slice(-30) : [],
+    deleted: Array.isArray(source.deleted) ? source.deleted.slice(-50) : [],
+  };
+}
+async function readContent() {
+  const bytes = await readStoredFile('content.json');
+  const content = bytes ? { ...defaultContent, ...JSON.parse(bytes.toString('utf8')) } : { ...defaultContent };
+  content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+  return content;
+}
 async function writeContentRaw(content) { await writeStoredFile('content.json', `${JSON.stringify(content, null, 2)}\n`, 'Update Torat Tsion CMS content'); }
 function enqueueContentMutation(operation) {
   const result = contentMutationTail.then(operation, operation);
@@ -1378,6 +1400,15 @@ app.get('/api/time-frame', async (req, res) => {
 });
 app.get('/api/collections', async (_req, res) => { try { const content = await readContent(); res.json({ collections: content.collections.filter((item) => isActive(item)).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)) }); } catch { res.status(500).json({ error: 'Unable to load collections' }); } });
 app.get('/api/collections/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const collection = content.collections.find((item) => item.id === req.params.id && isActive(item)); if (!collection) return res.status(404).json({ error: 'Collection not found' }); const home = buildHome(content, files, covers); res.json({ collection, recordings: (collection.recordingIds || []).map((id) => home._recordingIndex[id]).filter(Boolean) }); } catch { res.status(500).json({ error: 'Unable to load collection' }); } });
+app.get('/api/home-builder', async (_req, res) => {
+  try {
+    const content = await readContent();
+    res.json(content.homepageBuilder.published || content.homepageBuilder.draft);
+  } catch (error) {
+    console.error('homepage builder failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load homepage design' });
+  }
+});
 app.get('/api/recording-details/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const home = buildHome(content, files, covers); const recording = home._recordingIndex[req.params.id]; if (!recording) return res.status(404).json({ error: 'Recording not found' }); const related = home.recordings.filter((item) => item.id !== recording.id && ((item.rabbiId && item.rabbiId === recording.rabbiId) || (item.categoryId && item.categoryId === recording.categoryId))).slice(0, 8); res.json({ recording, related }); } catch { res.status(500).json({ error: 'Unable to load recording details' }); } });
 app.get('/api/search', async (req, res) => {
   const query = String(req.query.q || '').trim().toLowerCase();
@@ -1401,6 +1432,62 @@ app.get('/api/search', async (req, res) => {
 });
 app.post('/api/recordings/:id/play', async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const content = await readContent(); const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, playCount: Number(current.playCount || 0) + 1 }; await writeContent(content); res.json({ playCount: content.recordings[req.params.id].playCount }); } catch { res.status(500).json({ error: 'Unable to record play' }); } });
 app.put('/api/admin/content', requireAdmin, async (req, res) => { if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Content object is required' }); try { const current = await readContent(); const next = { ...current, ...req.body, settings: { ...current.settings, ...(req.body.settings || {}) } }; await writeContent(next); res.json({ content: next }); } catch { res.status(500).json({ error: 'Unable to save content' }); } });
+app.get('/api/admin/home-builder', requireAdmin, async (_req, res) => {
+  try {
+    const content = await readContent();
+    res.json(content.homepageBuilder);
+  } catch (error) {
+    console.error('admin homepage builder load failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to load homepage builder' });
+  }
+});
+app.put('/api/admin/home-builder/draft', requireAdmin, async (req, res) => {
+  try {
+    const input = req.body && typeof req.body === 'object' ? req.body : {};
+    const nextDraft = normalizeHomepageBuilder({ draft: input }).draft;
+    await mutateContent((content) => {
+      content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+      content.homepageBuilder.draft = nextDraft;
+      return nextDraft;
+    });
+    res.json({ draft: nextDraft });
+  } catch (error) {
+    console.error('admin homepage draft save failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to save homepage draft' });
+  }
+});
+app.post('/api/admin/home-builder/publish', requireAdmin, async (req, res) => {
+  try {
+    const username = isAdmin(req) ? 'admin' : 'unknown';
+    const result = await mutateContent((content) => {
+      content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+      const version = { id: newContentId('homepage'), createdAt: new Date().toISOString(), createdBy: username, draft: content.homepageBuilder.draft };
+      content.homepageBuilder.published = content.homepageBuilder.draft;
+      content.homepageBuilder.history.push(version);
+      return version;
+    });
+    res.json({ version: result });
+  } catch (error) {
+    console.error('admin homepage publish failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to publish homepage' });
+  }
+});
+app.post('/api/admin/home-builder/restore/:versionId', requireAdmin, async (req, res) => {
+  try {
+    const result = await mutateContent((content) => {
+      content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+      const version = content.homepageBuilder.history.find((item) => item.id === req.params.versionId);
+      if (!version) return null;
+      content.homepageBuilder.draft = version.draft;
+      return version;
+    });
+    if (!result) return res.status(404).json({ error: 'Homepage version not found' });
+    res.json({ draft: result.draft });
+  } catch (error) {
+    console.error('admin homepage restore failed', safeErrorCode(error));
+    res.status(500).json({ error: 'Unable to restore homepage version' });
+  }
+});
 app.get('/api/admin/content', requireAdmin, async (_req, res) => { try { res.json({ content: await readContent() }); } catch { res.status(500).json({ error: 'Unable to load content' }); } });
 app.get('/api/admin/drive/folders', requireAdmin, async (_req, res) => {
   try {

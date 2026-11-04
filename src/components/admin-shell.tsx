@@ -7,7 +7,8 @@ export const adminApiUrl = apiUrl;
 export type AdminHeaders = { Authorization: string };
 
 const navigation = [
-  ['Dashboard', '/admin'], ['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis'], ['Categories', '/admin/categories'],
+  ['Dashboard', '/admin'], ['Homepage Builder', '/admin/homepage-builder'], ['Design Studio', '/admin/homepage-builder?tab=design'], ['Banner Manager', '/admin/homepage-builder?tab=banners'],
+  ['Publishing & History', '/admin/homepage-builder?tab=history'], ['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis'], ['Categories', '/admin/categories'],
   ['Featured Content', '/admin/featured'], ['Carousel', '/admin/carousel'], ['Covers', '/admin/covers'],
 ] as const;
 let activeAdminToken: string | null = null;
