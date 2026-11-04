@@ -1380,14 +1380,23 @@ app.get('/api/collections', async (_req, res) => { try { const content = await r
 app.get('/api/collections/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const collection = content.collections.find((item) => item.id === req.params.id && isActive(item)); if (!collection) return res.status(404).json({ error: 'Collection not found' }); const home = buildHome(content, files, covers); res.json({ collection, recordings: (collection.recordingIds || []).map((id) => home._recordingIndex[id]).filter(Boolean) }); } catch { res.status(500).json({ error: 'Unable to load collection' }); } });
 app.get('/api/recording-details/:id', async (req, res) => { try { const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]); const home = buildHome(content, files, covers); const recording = home._recordingIndex[req.params.id]; if (!recording) return res.status(404).json({ error: 'Recording not found' }); const related = home.recordings.filter((item) => item.id !== recording.id && ((item.rabbiId && item.rabbiId === recording.rabbiId) || (item.categoryId && item.categoryId === recording.categoryId))).slice(0, 8); res.json({ recording, related }); } catch { res.status(500).json({ error: 'Unable to load recording details' }); } });
 app.get('/api/search', async (req, res) => {
+  const query = String(req.query.q || '').trim().toLowerCase();
   try {
-    const [content, files, covers, videos] = await Promise.all([readContent(), listRecordings(), readMapping(), youtubeVideos(String(req.query.q || ''))]);
-    const query = String(req.query.q || '').trim().toLowerCase();
-    const home = buildHome(content, files, covers);
-    const results = home.recordings.filter((recording) => !query || [recording.title, recording.description, recording.category, recording.rabbiName, recording.name, recording.recordedAt, recording.recordedDateLabel].some((value) => String(value || '').toLowerCase().includes(query)));
-    res.json({ results, videos: videos.videos });
-  } catch {
-    res.status(500).json({ error: 'Unable to search recordings' });
+    const videos = await youtubeVideos(query);
+    let results = [];
+    let recordingsError = null;
+    try {
+      const [content, files, covers] = await Promise.all([readContent(), listRecordings(), readMapping()]);
+      const home = buildHome(content, files, covers);
+      results = home.recordings.filter((recording) => !query || [recording.title, recording.description, recording.category, recording.rabbiName, recording.name, recording.recordedAt, recording.recordedDateLabel].some((value) => String(value || '').toLowerCase().includes(query)));
+    } catch (error) {
+      recordingsError = { message: 'Audio recordings are temporarily unavailable.', code: safeErrorCode(error) };
+      console.error('recording search failed', recordingsError.code);
+    }
+    res.json({ results, videos: videos.videos, recordingsError });
+  } catch (error) {
+    console.error('YouTube search failed', safeErrorCode(error));
+    res.status(502).json({ results: [], videos: [], error: 'Video search is temporarily unavailable.' });
   }
 });
 app.post('/api/recordings/:id/play', async (req, res) => { if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid recording ID' }); try { const content = await readContent(); const current = content.recordings[req.params.id] || {}; content.recordings[req.params.id] = { ...current, playCount: Number(current.playCount || 0) + 1 }; await writeContent(content); res.json({ playCount: content.recordings[req.params.id].playCount }); } catch { res.status(500).json({ error: 'Unable to record play' }); } });
