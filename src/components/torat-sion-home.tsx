@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { InlineYouTubePlayer, type ShowcaseVideo, useYouTubePlayback } from '@/components/video-showcase';
 import { apiUrl } from '@/lib/api';
+import { editorAttributes, editorElementId } from '@/lib/editor-elements';
 
 type Video = ShowcaseVideo & {
   description?: string;
@@ -158,7 +159,7 @@ function VideoCard({ video, featured = false, favorite, onFavorite, onPlay, play
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const showAffordance = hovered || focused;
-  return <View style={[styles.card, { width: cardWidth }, featured && styles.cardFeatured]}>
+  return <View {...editorAttributes({ id: editorElementId('home', 'video-card', video.id), kind: 'video-card', label: `video card ${video.title}`, page: 'home' })} style={[styles.card, { width: cardWidth }, featured && styles.cardFeatured]}>
     <View style={[styles.cardPressable, { width: cardWidth }]}>
       <View style={styles.thumbnailWrap}>{playing ? <InlineYouTubePlayer video={video} /> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, showAffordance && styles.thumbnailZoom]} /> : <View style={[styles.thumbnailFallback, showAffordance && styles.thumbnailZoom]}><Text style={styles.thumbnailFallbackText}>TORAT SION</Text></View>}<View style={[styles.thumbnailShade, showAffordance && styles.thumbnailShadeVisible]} /><View style={[styles.playCircle, showAffordance && styles.playCircleVisible]}><Text style={styles.playIcon}>▶</Text></View></Pressable>}{video.isLive && <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>}{video.isUpcoming && <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>UPCOMING</Text></View>}{parsha && <Text style={styles.badge}>{parsha}</Text>}</View>
       <Text numberOfLines={2} style={styles.cardTitle}>{video.title}</Text>
@@ -172,7 +173,7 @@ function Shelf({ id, title, videos, favorites, activeVideoId, onFavorite, onPlay
   if (!videos.length) return null;
   const { width } = useWindowDimensions();
   const cardWidth = width < 600 ? 260 : width < 1000 ? 280 : 320;
-  return <View nativeID={id} style={styles.shelf}><View style={styles.shelfHeader}><View><Text style={styles.shelfTitle}>{title}</Text><Text style={styles.shelfRule} /></View>{onViewAll && <Pressable onPress={onViewAll}><Text style={styles.viewAll}>View all →</Text></Pressable>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfTrack}>{videos.map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} />)}</ScrollView></View>;
+  return <View {...editorAttributes({ id: editorElementId('home', 'shelf', id || title), kind: 'shelf', label: `${title} shelf`, page: 'home' })} nativeID={id} style={styles.shelf}><View style={styles.shelfHeader}><View><Text {...editorAttributes({ id: editorElementId('home', 'text', `${id || title}-title`), kind: 'text', label: `${title} heading`, page: 'home' })} style={styles.shelfTitle}>{title}</Text><Text style={styles.shelfRule} /></View>{onViewAll && <Pressable {...editorAttributes({ id: editorElementId('home', 'link', `${id || title}-view-all`), kind: 'link', label: `${title} view all link`, page: 'home' })} onPress={onViewAll}><Text style={styles.viewAll}>View all →</Text></Pressable>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfTrack}>{videos.map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} />)}</ScrollView></View>;
 }
 
 function AllShiurimGrid({ videos, favorites, activeVideoId, onFavorite, onPlay }: { videos: Video[]; favorites: Set<string>; activeVideoId: string | null; onFavorite: (id: string) => void; onPlay: (video: Video) => void }) {
