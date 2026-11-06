@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AdminLogin, AdminShell, adminApiUrl, useAdminSession } from '@/components/admin-shell';
+import { VisualEditorSurface } from '@/components/visual-editor-surface';
 
 type SectionType = 'video-shelf' | 'keyword-shelf' | 'featured-banner' | 'grid' | 'carousel' | 'playlist' | 'announcement' | 'text' | 'image' | 'category-collection';
 type BuilderVideo = { id: string; title: string; thumbnailUrl?: string | null; publishedAt?: string | null; channelTitle?: string; sourceKey?: string; };
@@ -28,6 +29,7 @@ function newSection(type: SectionType, index: number): Section {
 
 export default function HomepageBuilderPage() {
   const session = useAdminSession();
+  const router = useRouter();
   const { tab, pageId } = useLocalSearchParams<{ tab?: string; pageId?: string }>();
   const [document, setDocument] = useState<BuilderDocument>({ design: {}, sections: [] });
   const [history, setHistory] = useState<BuilderDocument[]>([]);
@@ -285,6 +287,7 @@ export default function HomepageBuilderPage() {
   } : {};
 
   if (!session.token) return <AdminLogin onLogin={session.setToken} />;
+  if (selectedTab === 'design') return <VisualEditorSurface token={session.token} onExit={() => router.replace('/admin/homepage-builder' as never)} />;
   return <AdminShell token={session.token} title={tabTitle}>
     {loading ? <View style={styles.state}><ActivityIndicator color="#8bbcff" /></View> : <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.toolbar}><View><Text style={styles.eyebrow}>VISUAL CMS</Text><Text style={styles.title}>{tabTitle}</Text><Text style={styles.muted}>Edit the homepage visually. Nothing is public until you publish.</Text></View><View style={styles.toolbarActions}><Pressable onPress={() => setPreview(!preview)} style={styles.secondary}><Text style={styles.secondaryText}>{preview ? 'Close preview' : 'Preview'}</Text></Pressable><Pressable onPress={() => void saveTemplate()} style={styles.secondary}><Text style={styles.secondaryText}>Save template</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(false)} style={styles.secondary}><Text style={styles.secondaryText}>Save draft</Text></Pressable><Pressable disabled={saving} onPress={() => void saveDraft(true)} style={styles.primary}><Text style={styles.primaryText}>{saving ? 'Publishing…' : 'Publish'}</Text></Pressable></View></View>

@@ -21,7 +21,7 @@ type Video = ShowcaseVideo & {
 type Source = { key: string; label: string; videos: Video[] };
 type VideoPayload = { configured?: boolean; sources?: Source[]; error?: string };
 type BuilderSection = { id: string; type: string; title: string; subtitle?: string; description?: string; enabled?: boolean; background?: string; textColor?: string; source?: string; visibleCount?: number; videoIds?: string[]; banner?: { videoId?: string; title?: string; description?: string; buttonText?: string; buttonLink?: string } };
-type BuilderDocument = { design?: { background?: string; text?: string; header?: { title?: string; subtitle?: string; links?: Array<{ id: string; label: string; href: string }> }; footer?: { title?: string; subtitle?: string; links?: Array<{ id: string; label: string; href: string }> } }; sections?: BuilderSection[] };
+type BuilderDocument = { design?: { background?: string; text?: string; header?: { title?: string; subtitle?: string; links?: Array<{ id: string; label: string; href: string }> }; footer?: { title?: string; subtitle?: string; links?: Array<{ id: string; label: string; href: string }> } }; elements?: Record<string, { content?: string }>; sections?: BuilderSection[] };
 
 const favoritesKey = 'torat-sion.youtube-favorites';
 const parshiyot = ['Bereshit', 'Noach', 'Lech Lecha', 'Vayera', 'Chayei Sarah', 'Toldot', 'Vayetzei', 'Vayishlach', 'Vayeshev', 'Miketz', 'Vayigash', 'Vayechi', 'Shemot', 'Vaera', 'Bo', 'Beshalach', 'Yitro', 'Mishpatim', 'Terumah', 'Tetzaveh', 'Ki Tisa', 'Vayakhel', 'Pekudei', 'Vayikra', 'Tzav', 'Shemini', 'Tazria', 'Metzora', 'Acharei Mot', 'Kedoshim', 'Emor', 'Behar', 'Bechukotai', 'Bamidbar', 'Naso', 'Behaalotcha', 'Shelach', 'Korach', 'Chukat', 'Balak', 'Pinchas', 'Matot', 'Masei', 'Devarim', 'Vaetchanan', 'Eikev', 'Reeh', 'Shoftim', 'Ki Teitzei', 'Ki Tavo', 'Nitzavim', 'Vayeilech', 'Haazinu', 'Vezot Haberakhah'];
@@ -154,7 +154,7 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
   </View>;
 }
 
-function VideoCard({ video, featured = false, favorite, onFavorite, onPlay, playing, cardWidth }: { video: Video; featured?: boolean; favorite: boolean; onFavorite: () => void; onPlay: () => void; playing: boolean; cardWidth: number }) {
+function VideoCard({ video, featured = false, favorite, onFavorite, onPlay, playing, cardWidth, overrides = {} }: { video: Video; featured?: boolean; favorite: boolean; onFavorite: () => void; onPlay: () => void; playing: boolean; cardWidth: number; overrides?: Record<string, { content?: string }> }) {
   const parsha = findParsha(video);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -162,18 +162,19 @@ function VideoCard({ video, featured = false, favorite, onFavorite, onPlay, play
   return <View {...editorAttributes({ id: editorElementId('home', 'video-card', video.id), kind: 'video-card', label: `video card ${video.title}`, page: 'home' })} style={[styles.card, { width: cardWidth }, featured && styles.cardFeatured]}>
     <View style={[styles.cardPressable, { width: cardWidth }]}>
       <View style={styles.thumbnailWrap}>{playing ? <InlineYouTubePlayer video={video} /> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>{video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, showAffordance && styles.thumbnailZoom]} /> : <View style={[styles.thumbnailFallback, showAffordance && styles.thumbnailZoom]}><Text style={styles.thumbnailFallbackText}>TORAT SION</Text></View>}<View style={[styles.thumbnailShade, showAffordance && styles.thumbnailShadeVisible]} /><View style={[styles.playCircle, showAffordance && styles.playCircleVisible]}><Text style={styles.playIcon}>▶</Text></View></Pressable>}{video.isLive && <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>}{video.isUpcoming && <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>UPCOMING</Text></View>}{parsha && <Text style={styles.badge}>{parsha}</Text>}</View>
-      <Text numberOfLines={2} style={styles.cardTitle}>{video.title}</Text>
+      <Text numberOfLines={2} style={styles.cardTitle}>{overrides[editorElementId('home', 'video-card', video.id)]?.content || video.title}</Text>
       <Text numberOfLines={1} style={styles.cardMeta}>{formatPublished(video.publishedAt)}{formatDuration(video.durationSeconds) ? ` · ${formatDuration(video.durationSeconds)}` : ''}</Text>
     </View>
     <Pressable accessibilityLabel={favorite ? `Remove ${video.title} from favorites` : `Add ${video.title} to favorites`} onPress={onFavorite} style={styles.favoriteButton}><Text style={[styles.favoriteIcon, favorite && styles.favoriteActive]}>{favorite ? '★' : '☆'}</Text></Pressable>
   </View>;
 }
 
-function Shelf({ id, title, videos, favorites, activeVideoId, onFavorite, onPlay, onViewAll }: { id?: string; title: string; videos: Video[]; favorites: Set<string>; activeVideoId: string | null; onFavorite: (id: string) => void; onPlay: (video: Video) => void; onViewAll?: () => void }) {
+function Shelf({ id, title, videos, favorites, activeVideoId, onFavorite, onPlay, onViewAll, overrides = {} }: { id?: string; title: string; videos: Video[]; favorites: Set<string>; activeVideoId: string | null; onFavorite: (id: string) => void; onPlay: (video: Video) => void; onViewAll?: () => void; overrides?: Record<string, { content?: string }> }) {
   if (!videos.length) return null;
   const { width } = useWindowDimensions();
   const cardWidth = width < 600 ? 260 : width < 1000 ? 280 : 320;
-  return <View {...editorAttributes({ id: editorElementId('home', 'shelf', id || title), kind: 'shelf', label: `${title} shelf`, page: 'home' })} nativeID={id} style={styles.shelf}><View style={styles.shelfHeader}><View><Text {...editorAttributes({ id: editorElementId('home', 'text', `${id || title}-title`), kind: 'text', label: `${title} heading`, page: 'home' })} style={styles.shelfTitle}>{title}</Text><Text style={styles.shelfRule} /></View>{onViewAll && <Pressable {...editorAttributes({ id: editorElementId('home', 'link', `${id || title}-view-all`), kind: 'link', label: `${title} view all link`, page: 'home' })} onPress={onViewAll}><Text style={styles.viewAll}>View all →</Text></Pressable>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfTrack}>{videos.map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} />)}</ScrollView></View>;
+  const resolvedTitle = overrides[editorElementId('home', 'text', `${id || title}-title`)]?.content || title;
+  return <View {...editorAttributes({ id: editorElementId('home', 'shelf', id || title), kind: 'shelf', label: `${resolvedTitle} shelf`, page: 'home' })} nativeID={id} style={styles.shelf}><View style={styles.shelfHeader}><View><Text {...editorAttributes({ id: editorElementId('home', 'text', `${id || title}-title`), kind: 'text', label: `${resolvedTitle} heading`, page: 'home' })} style={styles.shelfTitle}>{resolvedTitle}</Text><Text style={styles.shelfRule} /></View>{onViewAll && <Pressable {...editorAttributes({ id: editorElementId('home', 'link', `${id || title}-view-all`), kind: 'link', label: `${resolvedTitle} view all link`, page: 'home' })} onPress={onViewAll}><Text style={styles.viewAll}>View all →</Text></Pressable>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfTrack}>{videos.map((video) => <VideoCard key={video.id} cardWidth={cardWidth} playing={activeVideoId === video.id} video={video} favorite={favorites.has(video.id)} onFavorite={() => onFavorite(video.id)} onPlay={() => onPlay(video)} overrides={overrides} />)}</ScrollView></View>;
 }
 
 function AllShiurimGrid({ videos, favorites, activeVideoId, onFavorite, onPlay }: { videos: Video[]; favorites: Set<string>; activeVideoId: string | null; onFavorite: (id: string) => void; onPlay: (video: Video) => void }) {
@@ -223,11 +224,12 @@ export function ToratSionHome() {
   const activeFeature = featured[featureIndex] || videos[0];
   const search = () => scrollToSection('all');
   const customSections = (builder?.sections || []).filter((section) => section.enabled !== false);
+  const editorOverrides = builder?.elements || {};
   const renderCustomSection = (section: BuilderSection) => {
     if (section.type === 'video-shelf' || section.type === 'keyword-shelf') {
       const selected = section.videoIds?.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video)) || [];
       const sectionVideos = selected.length ? selected : section.source === 'shabbat-shalom' ? shabbatVideos : filtered;
-      return <Shelf key={section.id} activeVideoId={activeVideo?.id || null} title={section.title} videos={sectionVideos.slice(0, section.visibleCount || sectionVideos.length)} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />;
+      return <Shelf key={section.id} activeVideoId={activeVideo?.id || null} title={section.title} videos={sectionVideos.slice(0, section.visibleCount || sectionVideos.length)} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} overrides={editorOverrides} />;
     }
     const bannerVideo = section.banner?.videoId ? videos.find((video) => video.id === section.banner?.videoId) : null;
     return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#172844' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => section.banner?.buttonLink ? router.push(section.banner.buttonLink as never) : playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
