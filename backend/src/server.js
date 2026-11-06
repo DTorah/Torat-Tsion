@@ -1607,6 +1607,24 @@ app.put('/api/admin/home-builder/draft', requireAdmin, async (req, res) => {
           if (index < 0) return null;
           return content.homepageBuilder.templates.splice(index, 1)[0];
         });
+        app.put('/api/admin/home-builder/templates/:id', requireAdmin, async (req, res) => {
+          try {
+            const template = await mutateContent((content) => {
+              content.homepageBuilder = normalizeHomepageBuilder(content.homepageBuilder);
+              const current = content.homepageBuilder.templates.find((item) => item.id === req.params.id);
+              if (!current) return null;
+              const input = req.body && typeof req.body === 'object' ? req.body : {};
+              if (input.name !== undefined) current.name = String(input.name).trim().slice(0, 160) || current.name;
+              if (input.document && typeof input.document === 'object') current.document = normalizeHomepageBuilder({ draft: input.document }).draft;
+              return current;
+            });
+            if (!template) return res.status(404).json({ error: 'Template not found' });
+            res.json({ template });
+          } catch (error) {
+            console.error('admin homepage template update failed', safeErrorCode(error));
+            res.status(500).json({ error: 'Unable to update template' });
+          }
+        });
         if (!removed) return res.status(404).json({ error: 'Template not found' });
         res.json({ deleted: removed.id });
       } catch (error) {
