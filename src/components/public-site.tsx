@@ -113,7 +113,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
               </Link>
             );
           })}
-          <DonateButton />
+          <DonateButton compact />
         </View>
         {!isMobile && <View style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</View>}
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
