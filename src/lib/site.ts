@@ -2,7 +2,7 @@ export const donationUrl = 'https://www.paypal.com/donate/?cmd=_s-xclick&hosted_
 export const torahHelpUrl = 'https://www.torahhelp.com/';
 export const kolHalashonUrl = 'https://www.kolhalashon.com/';
 export const siteName = 'Torah Farsi';
-export const siteAttribution = 'A project of Torat Sion';
+export const siteAttribution = 'Project of Torat Sion of Great Neck Inc';
 export const brandColors = {
   ink: '#241b1b',
   burgundy: '#8f111b',

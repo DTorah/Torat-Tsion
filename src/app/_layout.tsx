@@ -15,7 +15,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={Platform.OS === 'web' ? DefaultTheme : colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Head><title>Torah Farsi | A project of Torat Sion</title><meta name="description" content="Listen to Persian Torah classes and recordings. A project of Torat Sion." /></Head>
+      <Head><title>Torah Farsi | Project of Torat Sion of Great Neck Inc</title><meta name="description" content="Listen to Persian Torah classes and recordings. Project of Torat Sion of Great Neck Inc." /></Head>
       <ListenerProvider>
         <YouTubePlaybackProvider>
         <AnimatedSplashOverlay />
