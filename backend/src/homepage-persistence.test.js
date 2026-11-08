@@ -85,6 +85,24 @@ async function main() {
     const nextInstance = await loadServer(env, github);
     assert.equal((await nextInstance.readContent()).homepageBuilder.published.sections[0].id, 'shabbat');
 
+    // Managed layouts must preserve order, hidden state, and intentional deletion.
+    const managed = { shelvesManaged: true, design: {}, sections: [
+      { id: 'builtin-favorites', type: 'builtin-shelf', source: 'favorites', title: 'Saved classes', enabled: false },
+      { id: 'builtin-new', type: 'builtin-shelf', source: 'new', title: 'Recent classes' },
+    ] };
+    await route(restarted, 'put', '/api/admin/home-builder/draft', managed);
+    await route(restarted, 'post', '/api/admin/home-builder/publish');
+    const managedRestart = await loadServer(env, github);
+    const managedPublic = (await route(managedRestart, 'get', '/api/home-builder')).body;
+    assert.equal(managedPublic.shelvesManaged, true);
+    assert.deepEqual(Array.from(managedPublic.sections, (s) => s.source), ['favorites', 'new']);
+    assert.equal(managedPublic.sections[0].type, 'builtin-shelf');
+    assert.equal(managedPublic.sections[0].enabled, false);
+    await route(restarted, 'put', '/api/admin/home-builder/draft', { shelvesManaged: true, sections: [], design: {} });
+    await route(restarted, 'post', '/api/admin/home-builder/publish');
+    const emptyRestart = await loadServer(env, github);
+    assert.equal((await route(emptyRestart, 'get', '/api/home-builder')).body.sections.length, 0);
+
     const temporary = await loadServer({ TORAT_TSION_DATA_DIR: directory }, github);
     assert.equal(temporary.contentStorageStatus().persistent, false);
     assert.match((await route(temporary, 'post', '/api/admin/home-builder/publish')).body.storage.warning, /temporarily/);
