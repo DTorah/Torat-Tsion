@@ -56,7 +56,7 @@ export default function RabbiProfile() {
   const toListenerRecording = (recording: Recording): ListenerRecording => ({
     id: recording.id,
     title: normalizeRecordingTitle(recording.title || recording.name),
-    speaker: recording.rabbiName || rabbi?.name || 'Torat Tsion',
+    speaker: recording.rabbiName || rabbi?.name || 'Torah Farsi',
     category: recording.category || 'Torah',
     source: apiUrl(recording.streamUrl),
     coverUrl: recording.coverUrl ? apiUrl(recording.coverUrl) : null,

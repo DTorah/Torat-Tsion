@@ -26,3 +26,17 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+::selection {
+  background: #fbe8e9;
+  color: #8f111b;
+}
+
+:where(a, button, input, [role="button"], [role="link"]):focus-visible {
+  outline: 2px solid #a67d38;
+  outline-offset: 4px;
+}
+
+[id^="topic-"], #all, #new, #favorites, #recent {
+  scroll-margin-top: 24px;
+}

@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { withHomepageShelves, makeHomepageShelf } from '../src/lib/homepage-shelves.ts';
+const custom = { id: 'faith', type: 'keyword-shelf', title: 'Faith', rules: { keywords: ['faith'] } };
+const migrated = withHomepageShelves({ sections: [custom], design: { background: '#fff' } });
+assert.equal(migrated.sections[0].source, 'featured');
+assert.equal(migrated.sections[1], custom, 'existing custom content and order are preserved');
+assert.equal(migrated.sections.filter((s) => s.source === 'new').length, 1);
+assert.equal(migrated.sections.some((s) => s.source === 'trending' || s.source === 'shabbat-shalom'), false);
+assert.equal(withHomepageShelves(migrated), migrated, 'migration is idempotent');
+const edited = { ...migrated, sections: [makeHomepageShelf('favorites', 'My saved classes'), custom, { ...makeHomepageShelf('new', 'Latest classes'), enabled: false }] };
+const reloaded = withHomepageShelves(JSON.parse(JSON.stringify(edited)));
+assert.deepEqual(reloaded.sections.map((s) => s.id), ['builtin-favorites', 'faith', 'builtin-new']);
+assert.equal(reloaded.sections[0].title, 'My saved classes');
+assert.equal(reloaded.sections[2].enabled, false);
+assert.deepEqual(withHomepageShelves({ shelvesManaged: true, sections: [] }).sections, [], 'deleting every shelf does not recreate defaults');
+console.log('Homepage shelf migration, ordering, hiding, renaming, and permanent deletion tests passed');
