@@ -16,7 +16,7 @@ export function DonateButton({ compact = false }: { compact?: boolean }) {
           }
         }}
         accessibilityRole="link"
-        accessibilityLabel="Donate through TorahHelp — help Torah reach more people"
+        accessibilityLabel="Donate through PayPal — help Torah reach more people"
         onHoverIn={() => setHighlighted(true)}
         onHoverOut={() => setHighlighted(false)}
         onFocus={() => setHighlighted(true)}

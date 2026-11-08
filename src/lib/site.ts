@@ -1,4 +1,4 @@
-export const donationUrl = 'https://www.torahhelp.com/';
+export const donationUrl = 'https://www.paypal.com/donate/?cmd=_s-xclick&hosted_button_id=P6K22J4WSLKTS&ssrt=1794167492276';
 export const torahHelpUrl = 'https://www.torahhelp.com/';
 export const kolHalashonUrl = 'https://www.kolhalashon.com/';
 export const siteName = 'Torah Farsi';
