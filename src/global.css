@@ -36,7 +36,3 @@ body {
 [id^="topic-"], #all, #new, #favorites, #recent {
   scroll-margin-top: 24px;
 }
-
-#torah-farsi-hero-shade {
-  background: linear-gradient(90deg, rgba(7,30,26,0.95) 0%, rgba(7,30,26,0.65) 55%, rgba(7,30,26,0.12) 100%);
-}
