@@ -30,6 +30,21 @@ The root Render Blueprint declares `YOUTUBE_API_KEY` on `torat-tsion-api` with `
 
 The web Home page requests `/api/home?summary=1` first: this reads root folders and bounded Admin-curated recording IDs without waiting for recursive library discovery. The full metadata response is loaded only when the visitor scrolls to the lower Home shelves. Drive folder listings and recursive discovery results are cached in memory for five minutes, and the duration worker reuses that discovery cache between bounded hydration batches. Parsha labels use the Hebcal calendar's diaspora reading schedule and are omitted on holiday readings.
 
+## Permanent keyword shelves on Render
+
+The default `/tmp/torat-tsion-data` directory is temporary. Publishing there survives a browser refresh, but not a Render instance replacement or redeploy. The admin builder reports this explicitly instead of implying that publishing is permanent.
+
+1. Use a private GitHub repository with a `main` branch for CMS data. Content files may contain analytics and unpublished drafts, so use a private repository rather than the public application repository.
+2. Create a fine-grained token scoped to that repository with **Contents: Read and write**. In Render, open **torat-tsion-api → Environment** and set `GITHUB_CONTENTS_TOKEN` to that token, `GITHUB_CONTENTS_REPOSITORY` to `owner/private-repository`, and `GITHUB_CONTENTS_BRANCH` to `torat-tsion-content`. Never paste the token into chat or commit it.
+3. Save and redeploy the API. `/health` must show `contentStorage: "github"` and `contentStoragePersistent: true`.
+4. Publish the shelf from Admin. Keyword rules are saved in `content.json` on the dedicated data branch and re-evaluated against the video library on public requests, so future matching shiurim appear without editing the shelf.
+
+If temporary settings still exist before the initial redeploy, copy your shelf names and keywords first and re-enter them after configuration. A redeploy cannot recover files that an earlier instance already lost.
+
+New keyword shelves match titles only. Use the **Match titles only / Match titles and descriptions** control to change that explicitly. Comma-separated keywords use Match ANY or ALL, with optional exact-phrase matching.
+
+For an attached persistent disk instead of GitHub, set `TORAT_TSION_DATA_DIR` to its mount directory and set `TORAT_TSION_DATA_PERSISTENT=true` only after the disk is actually attached. Changing that flag alone does not make temporary files persistent.
+
 ## One-time Google Drive authorization
 
 1. In Google Cloud, create or select a **Web application** OAuth client and add `https://torat-tsion-api.onrender.com/auth/google/callback` as an authorized redirect URI.

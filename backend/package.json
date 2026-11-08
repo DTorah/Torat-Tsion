@@ -4,7 +4,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node src/recording-date.test.js && node src/youtube-live.test.js",
+    "test": "node src/recording-date.test.js && node src/youtube-live.test.js && node src/homepage-persistence.test.js",
     "syntax": "node --check src/server.js"
   },
   "dependencies": {

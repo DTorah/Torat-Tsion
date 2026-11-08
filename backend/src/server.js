@@ -47,6 +47,15 @@ const githubContentsToken = process.env.GITHUB_CONTENTS_TOKEN?.trim() || null;
 const githubContentsRepository = process.env.GITHUB_CONTENTS_REPOSITORY?.trim() || 'DTorah/Torat-Tsion';
 const githubContentsBranch = process.env.GITHUB_CONTENTS_BRANCH?.trim() || 'torat-tsion-content';
 const githubContentsEnabled = Boolean(githubContentsToken);
+// Files outside an explicitly configured persistent disk are temporary on Render.
+function contentStorageStatus() {
+  const persistent = githubContentsEnabled || process.env.TORAT_TSION_DATA_PERSISTENT === 'true';
+  return {
+    mode: githubContentsEnabled ? 'github' : 'filesystem',
+    persistent,
+    warning: persistent ? null : 'Changes are saved temporarily and can disappear after a server restart. Configure GITHUB_CONTENTS_TOKEN on the API server for permanent saving.',
+  };
+}
 const recordingTimeZone = process.env.RECORDING_TIME_ZONE || 'America/New_York';
 const maxImageBytes = 5 * 1024 * 1024;
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -927,14 +936,14 @@ function normalizeHomepageBuilder(value) {
         keywords: Array.isArray(item.rules.keywords) ? item.rules.keywords.filter((keyword) => typeof keyword === 'string').map((keyword) => keyword.trim().slice(0, 120)).filter(Boolean).slice(0, 100) : [],
         excludeKeywords: Array.isArray(item.rules.excludeKeywords) ? item.rules.excludeKeywords.filter((keyword) => typeof keyword === 'string').map((keyword) => keyword.trim().slice(0, 120)).filter(Boolean).slice(0, 100) : [],
         matchMode: item.rules.matchMode === 'all' ? 'all' : 'any',
-        searchDescriptions: item.rules.searchDescriptions !== false,
+        searchDescriptions: item.rules.searchDescriptions === true,
         exactPhrase: item.rules.exactPhrase === true,
         liveOnly: item.rules.liveOnly === true,
         archivedOnly: item.rules.archivedOnly === true,
         dateFrom: typeof item.rules.dateFrom === 'string' ? item.rules.dateFrom.slice(0, 30) : '',
         dateTo: typeof item.rules.dateTo === 'string' ? item.rules.dateTo.slice(0, 30) : '',
         sort: item.rules.sort === 'oldest' ? 'oldest' : 'newest',
-      } : { keywords: [], excludeKeywords: [], matchMode: 'any', searchDescriptions: true, exactPhrase: false, liveOnly: false, archivedOnly: false, dateFrom: '', dateTo: '', sort: 'newest' },
+      } : { keywords: [], excludeKeywords: [], matchMode: 'any', searchDescriptions: false, exactPhrase: false, liveOnly: false, archivedOnly: false, dateFrom: '', dateTo: '', sort: 'newest' },
       responsive: item.responsive && typeof item.responsive === 'object' ? {
         desktop: item.responsive.desktop !== false,
         tablet: item.responsive.tablet !== false,
@@ -1366,6 +1375,7 @@ app.get('/auth/google/diagnostic', requireAdmin, async (_req, res) => {
 app.get('/health', (_req, res) => res.json({
   ok: true,
   contentStorage: githubContentsEnabled ? 'github' : 'filesystem',
+  contentStoragePersistent: contentStorageStatus().persistent,
   driveConfigured: Boolean(folderId),
   driveFolderFormatValid: validId(folderId),
   googleOAuthConfigured: googleOAuthConfigured(),
@@ -1493,7 +1503,7 @@ function resolveKeywordShelfVideos(section, videos) {
   const excluded = Array.isArray(rules.excludeKeywords) ? rules.excludeKeywords.map(normalizeShelfText).filter(Boolean) : [];
   const matches = (video) => {
     const title = normalizeShelfText(video.title);
-    const description = rules.searchDescriptions === false ? '' : normalizeShelfText(video.description);
+    const description = rules.searchDescriptions === true ? normalizeShelfText(video.description) : '';
     const haystack = `${title} ${description}`.trim();
     const contains = (keyword) => rules.exactPhrase ? haystack.includes(keyword) : keyword.split(' ').every((part) => haystack.includes(part));
     const included = !keywords.length || (rules.matchMode === 'all' ? keywords.every(contains) : keywords.some(contains));
@@ -1516,6 +1526,7 @@ function resolveKeywordShelfVideos(section, videos) {
   }).slice(0, Math.min(100, Number(section.visibleCount) || 100)).map((video) => video.id);
 }
 async function resolvePublishedHomepageBuilder(document) {
+  if (!(document.sections || []).some((section) => section.type === 'keyword-shelf')) return document;
   const videos = (await youtubeVideos()).videos || [];
   return {
     ...document,
@@ -1525,7 +1536,7 @@ async function resolvePublishedHomepageBuilder(document) {
 app.get('/api/home-builder', async (_req, res) => {
   try {
     const content = await readContent();
-    res.json(await resolvePublishedHomepageBuilder(content.homepageBuilder.published || content.homepageBuilder.draft));
+    res.set('Cache-Control', 'no-store').json(await resolvePublishedHomepageBuilder(content.homepageBuilder.published || defaultContent.homepageBuilder.draft));
   } catch (error) {
     console.error('homepage builder failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to load homepage design' });
@@ -1557,7 +1568,7 @@ app.put('/api/admin/content', requireAdmin, async (req, res) => { if (!req.body 
 app.get('/api/admin/home-builder', requireAdmin, async (_req, res) => {
   try {
     const content = await readContent();
-    res.json(content.homepageBuilder);
+    res.set('Cache-Control', 'no-store').json({ ...content.homepageBuilder, storage: contentStorageStatus() });
   } catch (error) {
     console.error('admin homepage builder load failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to load homepage builder' });
@@ -1632,7 +1643,7 @@ app.put('/api/admin/home-builder/draft', requireAdmin, async (req, res) => {
         res.status(500).json({ error: 'Unable to delete template' });
       }
     });
-    res.json({ draft: nextDraft });
+    res.json({ draft: nextDraft, storage: contentStorageStatus() });
   } catch (error) {
     console.error('admin homepage draft save failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to save homepage draft' });
@@ -1648,7 +1659,7 @@ app.post('/api/admin/home-builder/publish', requireAdmin, async (req, res) => {
       content.homepageBuilder.history.push(version);
       return version;
     });
-    res.json({ version: result });
+    res.json({ version: result, storage: contentStorageStatus() });
   } catch (error) {
     console.error('admin homepage publish failed', safeErrorCode(error));
     res.status(500).json({ error: 'Unable to publish homepage' });

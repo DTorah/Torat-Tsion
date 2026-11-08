@@ -82,7 +82,7 @@ function toShiur(recording: DriveShiur, covers: Record<string, CoverAssignment>)
   return {
     id: recording.id,
     title: normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || ''),
-    speaker: recording.rabbiName || recording.speaker || 'Torat Tsion',
+    speaker: recording.rabbiName || recording.speaker || 'Torah Farsi',
     category,
     date: '',
     source: apiUrl(recording.streamUrl),
@@ -100,7 +100,7 @@ function formatTime(seconds: number) {
 }
 
 function DefaultCover({ style }: { style?: object }) {
-  return <View style={[styles.defaultCover, style]}><Image contentFit="contain" source={toratTsionLogo} style={styles.defaultCoverLogo} /><Text style={styles.defaultCoverBrand}>Torat Tsion</Text><Text style={styles.defaultCoverType}>SHIURIM</Text></View>;
+  return <View style={[styles.defaultCover, style]}><Image contentFit="contain" source={toratTsionLogo} style={styles.defaultCoverLogo} /><Text style={styles.defaultCoverBrand}>Torah Farsi</Text><Text style={styles.defaultCoverType}>SHIURIM</Text></View>;
 }
 
 function Artwork({ shiur, source, large = false, wide = false, onError }: { shiur: Shiur; source: number | { uri: string }; large?: boolean; wide?: boolean; onError?: () => void }) {
@@ -255,7 +255,7 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.brandLockup}>
               <Image contentFit="contain" source={toratTsionLogo} style={styles.headerLogo} />
-              <View><Text style={styles.brand}>Torat Tsion</Text><Text style={styles.brandSub}>A home for Torah listening</Text></View>
+              <View><Text style={styles.brand}>Torah Farsi</Text><Text style={styles.brandSub}>A home for Torah listening</Text></View>
             </View>
             <Pressable accessibilityLabel="Open admin dashboard" onPress={() => router.push('/admin' as never)} style={({ pressed }) => [styles.headerActionButton, pressed && styles.pressed]}><Text style={styles.headerAction}>ADMIN</Text></Pressable>
           </View>

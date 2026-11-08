@@ -100,9 +100,9 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
     <>
       <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
         <Link href="/" asChild>
-          <Pressable accessibilityLabel="Torat Sion home" style={styles.brandPressable}>
-            <Image accessibilityLabel="Torat Tsion logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
-            <Text style={styles.logo}>Torat Sion</Text>
+          <Pressable accessibilityLabel="Torah Farsi home" style={styles.brandPressable}>
+            <Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
+            <View><Text style={styles.logo}>Torah Farsi</Text><Text style={styles.projectByline}>A project of Torat Sion</Text></View>
           </Pressable>
         </Link>
         <View style={[styles.nav, isMobile && styles.navMobile]}>
@@ -124,7 +124,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
       </View>
 
       <View style={[styles.header, isMobile && styles.headerMobile]}>
-        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><Text style={styles.mobileBrandText}>Torat Sion</Text></View>
+        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><View><Text style={styles.mobileBrandText}>Torah Farsi</Text><Text style={styles.projectByline}>A project of Torat Sion</Text></View></View>
         <View style={styles.search}>
         <Pressable accessibilityLabel="Submit search" onPress={submitSearch} style={styles.searchIcon}><LineIcon name="search" /></Pressable>
         <TextInput
@@ -179,7 +179,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
       <View style={styles.cardBody}>
         <Text style={styles.cardCategory}>{recording.category || 'Torah'}</Text>
         <Text numberOfLines={4} style={styles.cardTitle}>{normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}</Text>
-        <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torat Tsion'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
+        <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torah Farsi'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
         <View style={styles.cardActions}>
           <Pressable
             accessibilityLabel={`${active && status.playing ? 'Pause' : 'Play'} ${normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}`}
@@ -468,11 +468,11 @@ export function PublicHome() {
 }
 
 export function PublicRecordingList({ title, description, recordings, timeFrameCategoryId }: { title: string; description?: string; recordings: Recording[]; timeFrameCategoryId?: string }) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>Torat Tsion</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<TimeFrameBuilder categoryId={timeFrameCategoryId} categoryName={timeFrameCategoryId ? title : undefined} recordings={recordings} /><View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>Torah Farsi</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<TimeFrameBuilder categoryId={timeFrameCategoryId} categoryName={timeFrameCategoryId ? title : undefined} recordings={recordings} /><View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
 }
 
 export function PublicDirectory({ title, description, items, kind }: { title: string; description: string; items: Array<Rabbi | Category>; kind: 'rabbi' | 'category' | 'collection' }) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>TORAT TSION</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.pageDescription}>{description}</Text>{kind === 'rabbi' ? <View style={styles.rabbiGrid}>{items.map((item) => <RabbiCard key={item.id} rabbi={item as Rabbi} />)}</View> : <View style={styles.categoryGrid}>{items.map((item) => <Link key={item.id} href={(kind === 'category' ? `/categories/${item.id}` : `/collections/${item.id}`) as never} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{item.name}</Text><Text numberOfLines={3} style={styles.categoryDescription}>{item.description || (kind === 'category' ? 'Browse shiurim in this category' : 'Listen to this collection')}</Text></Pressable></Link>)}</View>}</View></ScrollView>;
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>TORAH FARSI</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.pageDescription}>{description}</Text>{kind === 'rabbi' ? <View style={styles.rabbiGrid}>{items.map((item) => <RabbiCard key={item.id} rabbi={item as Rabbi} />)}</View> : <View style={styles.categoryGrid}>{items.map((item) => <Link key={item.id} href={(kind === 'category' ? `/categories/${item.id}` : `/collections/${item.id}`) as never} asChild><Pressable style={styles.categoryCard}><Text style={styles.categoryName}>{item.name}</Text><Text numberOfLines={3} style={styles.categoryDescription}>{item.description || (kind === 'category' ? 'Browse shiurim in this category' : 'Listen to this collection')}</Text></Pressable></Link>)}</View>}</View></ScrollView>;
 }
 
 export function PublicPrivacyPolicy() {
@@ -480,25 +480,25 @@ export function PublicPrivacyPolicy() {
   return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}>
     <PublicHeader query={query} setQuery={setQuery} />
     <View style={styles.privacyHero}>
-      <Text style={styles.pageEyebrow}>TORAT TSION</Text>
+      <Text style={styles.pageEyebrow}>TORAH FARSI</Text>
       <Text style={styles.pageTitle}>Privacy Policy</Text>
       <Text style={styles.pageDescription}>Last updated: October 1, 2026</Text>
     </View>
     <View style={styles.privacyCard}>
-      <Text style={styles.privacyLead}>Torat Tsion is a Torah listening service. This policy explains how the Torat Tsion website and Android app handle information when you listen to recordings or use the optional Admin tools.</Text>
+      <Text style={styles.privacyLead}>Torah Farsi is a Torah listening service. This policy explains how the Torah Farsi website and Android app handle information when you listen to recordings or use the optional Admin tools.</Text>
 
-      <PrivacySection title="Information Torat Tsion uses">
-        <Text style={styles.privacyText}>Public listening does not require an account. Torat Tsion does not ask public listeners for a name, email address, phone number, or payment information.</Text>
-        <Text style={styles.privacyText}>The app stores your favorites, playlists, recently played recording IDs, listening positions, and playback-rate preference locally on your device or browser. This information stays in your local app or browser storage and is not sent to Torat Tsion as part of normal listening.</Text>
+      <PrivacySection title="Information Torah Farsi uses">
+        <Text style={styles.privacyText}>Public listening does not require an account. Torah Farsi does not ask public listeners for a name, email address, phone number, or payment information.</Text>
+        <Text style={styles.privacyText}>The app stores your favorites, playlists, recently played recording IDs, listening positions, and playback-rate preference locally on your device or browser. This information stays in your local app or browser storage and is not sent to Torah Farsi as part of normal listening.</Text>
       </PrivacySection>
 
       <PrivacySection title="Audio recordings and playback">
-        <Text style={styles.privacyText}>Torah recordings and folder information are provided from the Torat Tsion recordings library hosted in Google Drive. When you play or download a recording, Torat Tsion's backend retrieves and streams the selected audio to your device. Audio streaming supports byte-range requests so playback can seek efficiently.</Text>
+        <Text style={styles.privacyText}>Torah recordings and folder information are provided from the Torah Farsi recordings library hosted in Google Drive. When you play or download a recording, Torah Farsi's backend retrieves and streams the selected audio to your device. Audio streaming supports byte-range requests so playback can seek efficiently.</Text>
         <Text style={styles.privacyText}>The backend may record an aggregate play count for a recording. This count is associated with the recording, not with a public listener account or profile.</Text>
       </PrivacySection>
 
       <PrivacySection title="Admin access">
-        <Text style={styles.privacyText}>Admin tools are limited to authorized content managers. An Admin username and password are used only to authenticate access to Admin functions. On the web, Torat Tsion uses a signed, time-limited Admin session cookie and browser session storage to keep an authorized Admin signed in while navigating Admin pages.</Text>
+        <Text style={styles.privacyText}>Admin tools are limited to authorized content managers. An Admin username and password are used only to authenticate access to Admin functions. On the web, Torah Farsi uses a signed, time-limited Admin session cookie and browser session storage to keep an authorized Admin signed in while navigating Admin pages.</Text>
         <Text style={styles.privacyText}>Admin-created content settings, including recording metadata, categories, Featured selections, Carousel items, and uploaded Rabbi or recording covers, are retained by the backend so they can be shown in the service.</Text>
       </PrivacySection>
 
@@ -507,28 +507,28 @@ export function PublicPrivacyPolicy() {
       </PrivacySection>
 
       <PrivacySection title="Analytics and advertising">
-        <Text style={styles.privacyText}>The current Torat Tsion application code does not include advertising networks, behavioral advertising, or third-party analytics SDKs. Torat Tsion does not sell personal information.</Text>
+        <Text style={styles.privacyText}>The current Torah Farsi application code does not include advertising networks, behavioral advertising, or third-party analytics SDKs. Torah Farsi does not sell personal information.</Text>
       </PrivacySection>
 
       <PrivacySection title="Third-party services">
-        <Text style={styles.privacyText}>Torat Tsion uses Google Drive as the source for recordings and Render to host the backend that serves the application's API and audio streams. These providers may process technical connection information necessary to deliver their services under their own policies.</Text>
+        <Text style={styles.privacyText}>Torah Farsi uses Google Drive as the source for recordings and Render to host the backend that serves the application's API and audio streams. These providers may process technical connection information necessary to deliver their services under their own policies.</Text>
       </PrivacySection>
 
       <PrivacySection title="Data security, retention, and deletion">
-        <Text style={styles.privacyText}>Torat Tsion keeps Google Drive service-account credentials on the server only; they are not included in the public website or Android app. Local listening preferences remain until you clear app data, browser site data, or uninstall the app. Admin session access expires automatically. Admin content and covers are retained until an authorized Admin changes or removes them, subject to the backend's configured storage lifecycle.</Text>
+        <Text style={styles.privacyText}>Torah Farsi keeps Google Drive service-account credentials on the server only; they are not included in the public website or Android app. Local listening preferences remain until you clear app data, browser site data, or uninstall the app. Admin session access expires automatically. Admin content and covers are retained until an authorized Admin changes or removes them, subject to the backend's configured storage lifecycle.</Text>
       </PrivacySection>
 
       <PrivacySection title="Children's privacy">
-        <Text style={styles.privacyText}>Torat Tsion is not directed at collecting personal information from children. Because public listening does not require a public account or personal information, Torat Tsion does not knowingly collect personal information from children through normal use of the service.</Text>
+        <Text style={styles.privacyText}>Torah Farsi is not directed at collecting personal information from children. Because public listening does not require a public account or personal information, Torah Farsi does not knowingly collect personal information from children through normal use of the service.</Text>
       </PrivacySection>
 
       <PrivacySection title="Changes to this policy">
-        <Text style={styles.privacyText}>Torat Tsion may update this Privacy Policy when the service or applicable requirements change. The current version will be posted on this page with an updated effective date.</Text>
+        <Text style={styles.privacyText}>Torah Farsi may update this Privacy Policy when the service or applicable requirements change. The current version will be posted on this page with an updated effective date.</Text>
       </PrivacySection>
 
       <PrivacySection title="Contact">
-        <Text style={styles.privacyText}>For privacy questions or requests, use the Torat Tsion project support channel on GitHub.</Text>
-        <Link href="https://github.com/DTorah/Torat-Tsion/issues" asChild><Pressable accessibilityLabel="Contact Torat Tsion privacy support on GitHub" style={styles.privacyContact}><Text style={styles.privacyContactText}>Open Torat Tsion support on GitHub</Text></Pressable></Link>
+        <Text style={styles.privacyText}>For privacy questions or requests, use the Torah Farsi project support channel on GitHub.</Text>
+        <Link href="https://github.com/DTorah/Torat-Tsion/issues" asChild><Pressable accessibilityLabel="Contact Torah Farsi privacy support on GitHub" style={styles.privacyContact}><Text style={styles.privacyContactText}>Open Torah Farsi support on GitHub</Text></Pressable></Link>
       </PrivacySection>
     </View>
   </View></ScrollView>;
@@ -539,6 +539,7 @@ function PrivacySection({ title, children }: { title: string; children: ReactNod
 }
 
 const styles = StyleSheet.create({
+  projectByline: { color: '#6e847a', fontSize: 10, marginTop: 5 },
   page: { backgroundColor: '#F8F9FA', flex: 1 },
   pageContent: { paddingBottom: 100 },
   shell: { alignSelf: 'center', marginLeft: Platform.OS === 'web' ? 232 : 0, maxWidth: 1280, paddingHorizontal: 36, width: '100%' },
@@ -552,18 +553,18 @@ const styles = StyleSheet.create({
   privacyContact: { alignSelf: 'flex-start', backgroundColor: '#eaf3ff', borderRadius: 999, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
   privacyContactText: { color: '#1d4ea8', fontSize: 13, fontWeight: '800' },
   sessionCard: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 18, borderWidth: 1, marginTop: 24, padding: 18 },
-  sessionEyebrow: { color: '#2d6cdf', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  sessionEyebrow: { color: '#23634f', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
   sessionTitle: { color: '#142950', fontSize: 22, fontWeight: '800', marginTop: 6 },
   sessionDescription: { color: '#5b6e8d', fontSize: 14, marginTop: 5 },
   sessionOptions: { gap: 7, paddingVertical: 14 },
-  sessionOption: { backgroundColor: '#f4f8ff', borderColor: '#dfeaf7', borderRadius: 10, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 },
-  sessionOptionActive: { backgroundColor: '#2d6cdf', borderColor: '#2d6cdf' },
+  sessionOption: { backgroundColor: '#f6f5f0', borderColor: '#dfeaf7', borderRadius: 10, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 },
+  sessionOptionActive: { backgroundColor: '#23634f', borderColor: '#23634f' },
   sessionOptionText: { color: '#1d4ea8', fontSize: 12, fontWeight: '700' },
   sessionOptionTextActive: { color: '#ffffff' },
   sessionButton: { alignItems: 'center', backgroundColor: '#142950', borderRadius: 10, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
   sessionButtonDisabled: { opacity: 0.65 },
   sessionButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
-  sessionResult: { color: '#2d6cdf', fontSize: 13, fontWeight: '700', marginTop: 14 },
+  sessionResult: { color: '#23634f', fontSize: 13, fontWeight: '700', marginTop: 14 },
   sessionList: { marginTop: 8 },
   timeFrameResults: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
   sessionItem: { color: '#415678', fontSize: 12, marginTop: 5 },
@@ -571,10 +572,10 @@ const styles = StyleSheet.create({
   sessionPlayText: { color: '#1d4ea8', fontSize: 12, fontWeight: '800' },
   sessionHint: { color: '#7d8ca3', fontSize: 12, marginTop: 12 },
   sessionSliderLabel: { color: '#142950', fontSize: 12, fontWeight: '700' },
-  sessionSliderValue: { color: '#2d6cdf', fontSize: 13, fontWeight: '800' },
+  sessionSliderValue: { color: '#23634f', fontSize: 13, fontWeight: '800' },
   timeTrack: { backgroundColor: '#dfeaf7', borderRadius: 999, height: 16, marginTop: 12 },
-  timeFill: { backgroundColor: '#2d6cdf', borderRadius: 999 },
-  timeThumb: { backgroundColor: '#ffffff', borderColor: '#2d6cdf', borderWidth: 3 },
+  timeFill: { backgroundColor: '#23634f', borderRadius: 999 },
+  timeThumb: { backgroundColor: '#ffffff', borderColor: '#23634f', borderWidth: 3 },
   header: {
     alignItems: 'center',
     backgroundColor: 'transparent',
@@ -603,16 +604,16 @@ const styles = StyleSheet.create({
   navIconFallback: { color: '#6b7280', fontSize: 18, width: 22 },
   navItemHover: { backgroundColor: '#f1f5f9' },
   navText: { color: '#4b5563', fontSize: 14, fontWeight: '600' },
-  navTextActive: { color: '#0052CC', fontWeight: '800' },
+  navTextActive: { color: '#23634f', fontWeight: '800' },
   playerLinkButton: { borderColor: '#c7d8f8', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  playerLink: { color: '#0052CC', fontSize: 12, fontWeight: '700' },
+  playerLink: { color: '#23634f', fontSize: 12, fontWeight: '700' },
   adminLinkButton: { paddingHorizontal: 12, paddingVertical: 8 },
   adminLinkText: { color: '#8598b8', fontSize: 12, fontWeight: '700' },
   minyanPanel: { backgroundColor: '#f8fafc', borderColor: '#e5e7eb', borderRadius: 12, borderWidth: 1, marginTop: 28, padding: 12 },
   minyanTitle: { color: '#111827', fontSize: 12, fontWeight: '800', marginBottom: 8 },
   minyanRow: { borderTopColor: '#e5e7eb', borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
   minyanName: { color: '#64748b', flex: 1, fontSize: 11, marginRight: 6 },
-  minyanTime: { color: '#0052CC', fontSize: 11, fontWeight: '800' },
+  minyanTime: { color: '#23634f', fontSize: 11, fontWeight: '800' },
   minyanEmpty: { color: '#94a3b8', fontSize: 11 },
   search: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', height: 46, maxWidth: 720, paddingHorizontal: 16 },
   searchMobile: { flexBasis: '100%', width: '100%' },
@@ -620,7 +621,7 @@ const styles = StyleSheet.create({
   searchInput: { color: '#111827', flex: 1, fontSize: 14, outlineStyle: 'none' as never },
   searchClear: { alignItems: 'center', backgroundColor: '#dbe6f6', borderRadius: 999, height: 20, justifyContent: 'center', marginRight: 6, width: 20 },
   searchClearText: { color: '#5b6e8d', fontSize: 11, fontWeight: '700' },
-  searchSubmit: { backgroundColor: '#0052CC', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  searchSubmit: { backgroundColor: '#23634f', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
   searchSubmitText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   hero: {
     backgroundColor: '#edf5ff',
@@ -645,13 +646,13 @@ const styles = StyleSheet.create({
   coverLargeMobile: { minHeight: 210, width: '100%' },
   coverFallback: { alignItems: 'center', backgroundColor: '#edf5ff', justifyContent: 'center' },
   coverLogo: { height: 52, width: 52 },
-  coverMark: { color: '#2d6cdf', fontFamily: 'serif', fontSize: 44, fontWeight: '700' },
+  coverMark: { color: '#23634f', fontFamily: 'serif', fontSize: 44, fontWeight: '700' },
   coverCaption: { color: '#1f3f75', fontSize: 10, marginTop: 8 },
   heroCopy: { flex: 1, justifyContent: 'center', padding: 38 },
   heroCopyMobile: { padding: 24 },
   heroTitle: { color: '#142950', fontSize: 31, fontWeight: '800', lineHeight: 37, marginTop: 12 },
   heroTitleMobile: { fontSize: 27, lineHeight: 33 },
-  eyebrow: { color: '#2d6cdf', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
+  eyebrow: { color: '#23634f', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
   heroMeta: { color: '#4c688d', fontSize: 14, marginTop: 12 },
   heroDescription: { color: '#415678', fontSize: 15, lineHeight: 23, marginTop: 16, maxWidth: 540 },
   heroAction: { marginTop: 20 },
@@ -659,11 +660,11 @@ const styles = StyleSheet.create({
   featuredSection: { backgroundColor: '#eaf3ff', borderColor: '#c9dcf6', borderRadius: 22, borderWidth: 1, marginTop: 28, padding: 18 },
   sectionTitleRow: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   sectionTitle: { color: '#142950', fontSize: 25, fontWeight: '800' },
-  viewAll: { color: '#2d6cdf', fontSize: 12, fontWeight: '700' },
+  viewAll: { color: '#23634f', fontSize: 12, fontWeight: '700' },
   shelf: { gap: 16, paddingVertical: 6 },
   shelfTrack: { alignItems: 'center', flexDirection: 'row', minWidth: 0 },
   shelfArrow: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#dbe4ee', borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
-  shelfArrowText: { color: '#0052CC', fontSize: 24, lineHeight: 28 },
+  shelfArrowText: { color: '#23634f', fontSize: 24, lineHeight: 28 },
   emptyShelf: { color: '#64748b', fontSize: 13, paddingHorizontal: 10, paddingVertical: 20 },
   recordingCard: {
     backgroundColor: '#ffffff',
@@ -677,19 +678,19 @@ const styles = StyleSheet.create({
   },
   mediaPressable: { position: 'relative' },
   mediaPressableActive: { opacity: 0.96 },
-  cardPlayOverlay: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 42, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -21 }, { translateY: -21 }], width: 42 },
+  cardPlayOverlay: { alignItems: 'center', backgroundColor: '#23634f', borderRadius: 999, height: 42, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -21 }, { translateY: -21 }], width: 42 },
   cardPlayOverlayVisible: { opacity: 1 },
   cardPlayIcon: { color: '#ffffff', fontSize: 15, marginLeft: 2 },
   cardBody: { minHeight: 105, padding: 12 },
-  cardCategory: { color: '#0052CC', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  cardCategory: { color: '#23634f', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   cardTitle: { color: '#111827', fontSize: 15, fontWeight: '800', lineHeight: 19, marginTop: 7 },
   cardMeta: { color: '#6b7280', fontSize: 12, marginTop: 6 },
   cardDate: { color: '#6a7e9b', fontSize: 11, marginTop: 5 },
   cardSkip: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 7 },
   cardSkipText: { color: '#1d4ea8', fontSize: 10, fontWeight: '800' },
   cardActions: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-  cardPlay: { alignItems: 'center', backgroundColor: '#2d6cdf', borderRadius: 999, height: 36, justifyContent: 'center', marginTop: 10, width: 36 },
-  favorite: { color: '#2d6cdf', fontSize: 22, marginTop: 9 },
+  cardPlay: { alignItems: 'center', backgroundColor: '#23634f', borderRadius: 999, height: 36, justifyContent: 'center', marginTop: 10, width: 36 },
+  favorite: { color: '#23634f', fontSize: 22, marginTop: 9 },
   queue: { color: '#4c688d', fontSize: 22, marginTop: 8 },
   download: { color: '#1d4ea8', fontSize: 20, marginTop: 8 },
   playIcon: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
@@ -707,16 +708,16 @@ const styles = StyleSheet.create({
   },
   rabbiPhoto: { backgroundColor: '#dfeaf7', height: 142, width: '100%' },
   rabbiFallback: { alignItems: 'center', justifyContent: 'center' },
-  rabbiInitials: { color: '#2d6cdf', fontSize: 38, fontWeight: '800' },
+  rabbiInitials: { color: '#23634f', fontSize: 38, fontWeight: '800' },
   rabbiName: { color: '#142950', fontSize: 18, fontWeight: '700', marginTop: 11 },
   rabbiDescription: { color: '#6a7e9b', fontSize: 12, lineHeight: 17, marginTop: 4 },
   rabbiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 },
-  categoryCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderLeftColor: '#2d6cdf', borderLeftWidth: 3, borderRadius: 16, borderWidth: 1, minHeight: 88, padding: 16, width: 220 },
+  categoryCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderLeftColor: '#23634f', borderLeftWidth: 3, borderRadius: 16, borderWidth: 1, minHeight: 88, padding: 16, width: 220 },
   categoryName: { color: '#142950', fontSize: 18, fontWeight: '700' },
   categoryDescription: { color: '#5b6e8d', fontSize: 12, marginTop: 8 },
   recordingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 28 },
-  pageEyebrow: { color: '#2d6cdf', fontSize: 11, fontWeight: '800', letterSpacing: 1.7, marginTop: 44 },
+  pageEyebrow: { color: '#23634f', fontSize: 11, fontWeight: '800', letterSpacing: 1.7, marginTop: 44 },
   pageTitle: { color: '#142950', fontSize: 42, fontWeight: '800', marginTop: 8 },
   pageDescription: { color: '#5b6e8d', fontSize: 15, lineHeight: 23, marginTop: 12, maxWidth: 650 },
   state: { alignItems: 'center', minHeight: 360, justifyContent: 'center' },

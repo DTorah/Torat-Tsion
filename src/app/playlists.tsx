@@ -11,7 +11,7 @@ export default function PlaylistsScreen() {
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(() => {
     setError(null);
-    loadListenerRecordings().then(setRecordings).catch(() => setError('Recordings are unavailable right now. Try again when the Torat Tsion library is reachable.'));
+    loadListenerRecordings().then(setRecordings).catch(() => setError('Recordings are unavailable right now. Try again when the Torah Farsi library is reachable.'));
   }, []);
   useEffect(() => { void load(); }, [load]);
   const create = () => { createPlaylist(name); setName(''); };
