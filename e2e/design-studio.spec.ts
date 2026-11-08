@@ -4,7 +4,7 @@ test('public homepage exposes accessible search, navigation, and video library',
   await page.goto('/');
   await expect(page.getByRole('textbox', { name: /search/i }).first()).toBeVisible();
   await expect(page.getByText('All Shiurim').first()).toBeVisible();
-  await expect(page.getByText(/Torat Sion/i).first()).toBeVisible();
+  await expect(page.getByText(/Torah Farsi/i).first()).toBeVisible();
 });
 
 test('admin route preserves an authenticated entry point', async ({ page }) => {

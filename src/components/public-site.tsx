@@ -17,7 +17,7 @@ import { ToratSionHome } from '@/components/torat-sion-home';
 
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
-const toratTsionLogo = require('@/assets/images/icon.png');
+const toratTsionLogo = require('@/assets/images/torah-farsi-logo.webp');
 
 function LineIcon({ name }: { name: 'home' | 'shiurim' | 'parsha' | 'rabbi' | 'donate' | 'library' | 'videos' | 'search' }) {
   const paths = {
@@ -106,7 +106,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
             const isActive = pathname === item.href || (item.href === '/' && pathname === '/');
             return (
               <Link key={item.href} href={item.href as never} asChild>
-                <Pressable accessibilityRole="link" style={({ hovered }) => [styles.navItem, isActive && styles.navItemActive, hovered && styles.navItemHover]}>
+                <Pressable accessibilityRole="link" style={({ hovered }: { pressed: boolean; hovered?: boolean }) => [styles.navItem, isActive && styles.navItemActive, hovered && styles.navItemHover]}>
                   <LineIcon name={item.label === 'Home' ? 'home' : item.label === 'Shiurim' ? 'shiurim' : item.label === 'Parsha' ? 'parsha' : item.label === 'Rabbi' ? 'rabbi' : item.label === 'Donate' ? 'donate' : item.label === 'Library' ? 'library' : item.label === 'Topics' ? 'shiurim' : 'parsha'} />
                   <Text style={[styles.navText, isActive && styles.navTextActive]}>{item.label}</Text>
                 </Pressable>
@@ -115,7 +115,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
           })}
           <DonateButton compact />
         </View>
-        {!isMobile && <View style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</View>}
+        {!isMobile && <View style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#8f111b" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</View>}
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
       </View>
 
@@ -166,7 +166,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
   return (
     <View style={styles.recordingCard}>
       <Link href={`/recordings/${recording.id}` as never} asChild>
-        <Pressable style={({ hovered }) => [styles.mediaPressable, hovered && styles.mediaPressableActive]}>
+        <Pressable style={({ hovered }: { pressed: boolean; hovered?: boolean }) => [styles.mediaPressable, hovered && styles.mediaPressableActive]}>
           <Cover recording={recording} />
           <View style={styles.cardPlayOverlay}><Text style={styles.cardPlayIcon}>▶</Text></View>
         </Pressable>
@@ -298,7 +298,7 @@ function YouTubeShelf({ videos }: { videos: YouTubeVideo[] }) {
 }
 
 function YouTubeHomeSection({ sources, loading, error }: { sources: YouTubeSource[]; loading: boolean; error: string | null }) {
-  if (loading) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><ActivityIndicator color="#2d6cdf" /><Text style={styles.stateText}>Loading official classes</Text></View></View>;
+  if (loading) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><ActivityIndicator color="#c51f2b" /><Text style={styles.stateText}>Loading official classes</Text></View></View>;
   if (error) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><Text style={styles.stateTitle}>Classes are unavailable</Text><Text style={styles.stateText}>{error}</Text></View></View>;
   const videos = sources.flatMap((source) => source.videos).sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || ''));
   if (!videos.length) return <View style={styles.section}><SectionTitle title="Latest Shiurim" /><View style={styles.youtubeState}><Text style={styles.stateText}>No public classes are available right now.</Text></View></View>;
@@ -386,14 +386,14 @@ const carouselStyles = StyleSheet.create({
   cardCoverFallback: { alignItems: 'center', justifyContent: 'center' },
   cardCoverLogo: { height: 40, opacity: 0.5, width: 40 },
   cardBody: { padding: 10 },
-  cardTitle: { color: '#142950', fontSize: 13, fontWeight: '700' },
+  cardTitle: { color: '#241b1b', fontSize: 13, fontWeight: '700' },
   cardSubtitle: { color: '#5b6e8d', fontSize: 11, marginTop: 4 },
   countdownBadge: { backgroundColor: 'rgba(20,41,80,0.85)', borderRadius: 8, left: 8, paddingHorizontal: 8, paddingVertical: 3, position: 'absolute', top: 8 },
   countdownText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
   arrow: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 18, borderWidth: 1, height: 36, justifyContent: 'center', width: 36, zIndex: 2 },
   arrowLeft: { marginRight: -18 },
   arrowRight: { marginLeft: -18 },
-  arrowText: { color: '#2d6cdf', fontSize: 18, fontWeight: '800' },
+  arrowText: { color: '#c51f2b', fontSize: 18, fontWeight: '800' },
 });
 
 function RabbiCard({ rabbi }: { rabbi: Rabbi }) {
@@ -415,10 +415,10 @@ function PublicFolderView({ folderId }: { folderId: string }) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { setPayload(null); setError(null); fetch(apiUrl(`/api/recordings/folder/${encodeURIComponent(folderId)}`)).then(async (response) => { const value = await response.json() as FolderPayload; if (!response.ok) throw new Error(value.error || 'Unable to load the folder'); setPayload(value); }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load the folder')); }, [folderId]);
   const openFolder = (folder: DriveFolder) => router.push(`/?folder=${encodeURIComponent(folder.id)}` as never);
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Pressable accessibilityLabel="Back to recordings" onPress={() => router.back()} style={folderStyles.backButton}><Text style={folderStyles.backText}>← Back</Text></Pressable>{!payload && !error && <View style={styles.state}><ActivityIndicator color="#2d6cdf" size="large" /></View>}{error && <View style={styles.state}><Text style={styles.stateTitle}>The folder is unavailable</Text><Text style={styles.stateText}>{error}</Text></View>}{payload && <><Text style={styles.pageEyebrow}>RECORDINGS</Text><Text style={styles.pageTitle}>{payload.folder?.name || 'Folder'}</Text>{Boolean(payload.folders?.length) && <View style={styles.section}><SectionTitle title="Folders" /><View style={folderStyles.folderGrid}>{payload.folders?.map((folder) => <FolderCard key={folder.id} folder={folder} onPress={() => openFolder(folder)} />)}</View></View>}<View style={styles.section}><SectionTitle title="Recordings" /><View style={styles.recordingGrid}>{(payload.recordings || []).map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!payload.recordings?.length && !payload.folders?.length && <Text style={styles.stateText}>This folder is empty.</Text>}</View></>}</View></ScrollView>;
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Pressable accessibilityLabel="Back to recordings" onPress={() => router.back()} style={folderStyles.backButton}><Text style={folderStyles.backText}>← Back</Text></Pressable>{!payload && !error && <View style={styles.state}><ActivityIndicator color="#c51f2b" size="large" /></View>}{error && <View style={styles.state}><Text style={styles.stateTitle}>The folder is unavailable</Text><Text style={styles.stateText}>{error}</Text></View>}{payload && <><Text style={styles.pageEyebrow}>RECORDINGS</Text><Text style={styles.pageTitle}>{payload.folder?.name || 'Folder'}</Text>{Boolean(payload.folders?.length) && <View style={styles.section}><SectionTitle title="Folders" /><View style={folderStyles.folderGrid}>{payload.folders?.map((folder) => <FolderCard key={folder.id} folder={folder} onPress={() => openFolder(folder)} />)}</View></View>}<View style={styles.section}><SectionTitle title="Recordings" /><View style={styles.recordingGrid}>{(payload.recordings || []).map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!payload.recordings?.length && !payload.folders?.length && <Text style={styles.stateText}>This folder is empty.</Text>}</View></>}</View></ScrollView>;
 }
 
-const folderStyles = StyleSheet.create({ backButton: { marginTop: 28 }, backText: { color: '#1d4ea8', fontSize: 14, fontWeight: '700' }, folderGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 }, folderCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 16, borderWidth: 1, minHeight: 118, padding: 16, width: 220 }, folderIcon: { color: '#2d6cdf', fontSize: 22, fontWeight: '800' }, folderName: { color: '#142950', fontSize: 18, fontWeight: '700', marginTop: 12 }, folderDescription: { color: '#6a7e9b', fontSize: 12, marginTop: 6 } });
+const folderStyles = StyleSheet.create({ backButton: { marginTop: 28 }, backText: { color: '#1d4ea8', fontSize: 14, fontWeight: '700' }, folderGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 }, folderCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 16, borderWidth: 1, minHeight: 118, padding: 16, width: 220 }, folderIcon: { color: '#c51f2b', fontSize: 22, fontWeight: '800' }, folderName: { color: '#241b1b', fontSize: 18, fontWeight: '700', marginTop: 12 }, folderDescription: { color: '#6a7e9b', fontSize: 12, marginTop: 6 } });
 
 export function PublicHome() {
   return <ToratSionHome />;
@@ -454,7 +454,7 @@ export function PublicHome() {
     <PublicHeader onSubmit={setQuery} query={query} setQuery={setQuery} />
     <ToratWelcome />
     <YouTubeHomeSection error={youtubeError} loading={youtubeLoading} sources={youtubeSources} />
-    {loading ? <View style={styles.state}><ActivityIndicator color="#0052CC" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateText}>{error}</Text></View> : <>
+    {loading ? <View style={styles.state}><ActivityIndicator color="#8f111b" size="large" /><Text style={styles.stateText}>Loading the library</Text></View> : error ? <View style={styles.state}><Text style={styles.stateText}>{error}</Text></View> : <>
       {(payload?.categories || []).map((category) => <AdminCategoryShelf key={category.id} category={category} recordings={visibleRecordings.filter((recording) => matchesAdminCategory(recording, category))} />)}
       {!payload?.categories?.length && <View style={styles.state}><Text style={styles.stateText}>No categories have been published yet.</Text></View>}
       {normalizedQuery && !visibleRecordings.length && <View style={styles.state}><Text style={styles.stateText}>No shiurim match “{query}”.</Text></View>}
@@ -535,7 +535,7 @@ function PrivacySection({ title, children }: { title: string; children: ReactNod
 }
 
 const styles = StyleSheet.create({
-  projectByline: { color: '#6e847a', fontSize: 10, marginTop: 5 },
+  projectByline: { color: '#8f111b', fontSize: 10, marginTop: 5 },
   page: { backgroundColor: '#F8F9FA', flex: 1 },
   pageContent: { paddingBottom: 100 },
   shell: { alignSelf: 'center', marginLeft: Platform.OS === 'web' ? 232 : 0, maxWidth: 1280, paddingHorizontal: 36, width: '100%' },
@@ -544,34 +544,34 @@ const styles = StyleSheet.create({
   privacyCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderRadius: 20, borderWidth: 1, marginTop: 22, maxWidth: 920, padding: 26 },
   privacyLead: { color: '#415678', fontSize: 16, lineHeight: 25 },
   privacySection: { borderTopColor: '#e7f0fc', borderTopWidth: 1, marginTop: 24, paddingTop: 24 },
-  privacyHeading: { color: '#142950', fontSize: 18, fontWeight: '800', marginBottom: 9 },
+  privacyHeading: { color: '#241b1b', fontSize: 18, fontWeight: '800', marginBottom: 9 },
   privacyText: { color: '#415678', fontSize: 14, lineHeight: 23, marginTop: 8 },
   privacyContact: { alignSelf: 'flex-start', backgroundColor: '#eaf3ff', borderRadius: 999, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
   privacyContactText: { color: '#1d4ea8', fontSize: 13, fontWeight: '800' },
   sessionCard: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 18, borderWidth: 1, marginTop: 24, padding: 18 },
-  sessionEyebrow: { color: '#23634f', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  sessionTitle: { color: '#142950', fontSize: 22, fontWeight: '800', marginTop: 6 },
+  sessionEyebrow: { color: '#8f111b', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  sessionTitle: { color: '#241b1b', fontSize: 22, fontWeight: '800', marginTop: 6 },
   sessionDescription: { color: '#5b6e8d', fontSize: 14, marginTop: 5 },
   sessionOptions: { gap: 7, paddingVertical: 14 },
-  sessionOption: { backgroundColor: '#f6f5f0', borderColor: '#dfeaf7', borderRadius: 10, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 },
-  sessionOptionActive: { backgroundColor: '#23634f', borderColor: '#23634f' },
+  sessionOption: { backgroundColor: '#fbf7f5', borderColor: '#dfeaf7', borderRadius: 10, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 },
+  sessionOptionActive: { backgroundColor: '#8f111b', borderColor: '#8f111b' },
   sessionOptionText: { color: '#1d4ea8', fontSize: 12, fontWeight: '700' },
   sessionOptionTextActive: { color: '#ffffff' },
-  sessionButton: { alignItems: 'center', backgroundColor: '#142950', borderRadius: 10, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
+  sessionButton: { alignItems: 'center', backgroundColor: '#241b1b', borderRadius: 10, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
   sessionButtonDisabled: { opacity: 0.65 },
   sessionButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
-  sessionResult: { color: '#23634f', fontSize: 13, fontWeight: '700', marginTop: 14 },
+  sessionResult: { color: '#8f111b', fontSize: 13, fontWeight: '700', marginTop: 14 },
   sessionList: { marginTop: 8 },
   timeFrameResults: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
   sessionItem: { color: '#415678', fontSize: 12, marginTop: 5 },
   sessionPlay: { alignSelf: 'flex-start', borderColor: '#cfe0ff', borderRadius: 10, borderWidth: 1, marginTop: 12, paddingHorizontal: 14, paddingVertical: 9 },
   sessionPlayText: { color: '#1d4ea8', fontSize: 12, fontWeight: '800' },
   sessionHint: { color: '#7d8ca3', fontSize: 12, marginTop: 12 },
-  sessionSliderLabel: { color: '#142950', fontSize: 12, fontWeight: '700' },
-  sessionSliderValue: { color: '#23634f', fontSize: 13, fontWeight: '800' },
+  sessionSliderLabel: { color: '#241b1b', fontSize: 12, fontWeight: '700' },
+  sessionSliderValue: { color: '#8f111b', fontSize: 13, fontWeight: '800' },
   timeTrack: { backgroundColor: '#dfeaf7', borderRadius: 999, height: 16, marginTop: 12 },
-  timeFill: { backgroundColor: '#23634f', borderRadius: 999 },
-  timeThumb: { backgroundColor: '#ffffff', borderColor: '#23634f', borderWidth: 3 },
+  timeFill: { backgroundColor: '#8f111b', borderRadius: 999 },
+  timeThumb: { backgroundColor: '#ffffff', borderColor: '#8f111b', borderWidth: 3 },
   header: {
     alignItems: 'center',
     backgroundColor: 'transparent',
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   sidebar: { backgroundColor: '#ffffff', borderRightColor: '#e5e7eb', borderRightWidth: 1, bottom: 0, left: 0, paddingHorizontal: 18, paddingTop: 26, position: 'fixed' as never, top: 0, width: 232, zIndex: 50 },
   sidebarMobile: { borderBottomColor: '#e5e7eb', borderBottomWidth: 1, borderRightWidth: 0, bottom: 'auto', flexDirection: 'row', height: 64, left: 0, paddingHorizontal: 14, paddingTop: 10, position: 'relative' as never, right: 0, top: 0, width: '100%' },
   brandPressable: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  brandLogo: { borderRadius: 12, height: 38, width: 38 },
+  brandLogo: { borderRadius: 12, height: 48, width: 48 },
   mobileBrand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 12 },
   mobileBrandLogo: { borderRadius: 8, height: 32, width: 32 },
   mobileBrandText: { color: '#111827', fontSize: 17, fontWeight: '800' },
@@ -600,16 +600,16 @@ const styles = StyleSheet.create({
   navIconFallback: { color: '#6b7280', fontSize: 18, width: 22 },
   navItemHover: { backgroundColor: '#f1f5f9' },
   navText: { color: '#4b5563', fontSize: 14, fontWeight: '600' },
-  navTextActive: { color: '#23634f', fontWeight: '800' },
+  navTextActive: { color: '#8f111b', fontWeight: '800' },
   playerLinkButton: { borderColor: '#c7d8f8', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  playerLink: { color: '#23634f', fontSize: 12, fontWeight: '700' },
+  playerLink: { color: '#8f111b', fontSize: 12, fontWeight: '700' },
   adminLinkButton: { paddingHorizontal: 12, paddingVertical: 8 },
   adminLinkText: { color: '#8598b8', fontSize: 12, fontWeight: '700' },
   minyanPanel: { backgroundColor: '#f8fafc', borderColor: '#e5e7eb', borderRadius: 12, borderWidth: 1, marginTop: 28, padding: 12 },
   minyanTitle: { color: '#111827', fontSize: 12, fontWeight: '800', marginBottom: 8 },
   minyanRow: { borderTopColor: '#e5e7eb', borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
   minyanName: { color: '#64748b', flex: 1, fontSize: 11, marginRight: 6 },
-  minyanTime: { color: '#23634f', fontSize: 11, fontWeight: '800' },
+  minyanTime: { color: '#8f111b', fontSize: 11, fontWeight: '800' },
   minyanEmpty: { color: '#94a3b8', fontSize: 11 },
   search: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 20, borderWidth: 1, flex: 1, flexDirection: 'row', height: 46, maxWidth: 720, paddingHorizontal: 16 },
   searchMobile: { flexBasis: '100%', width: '100%' },
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   searchInput: { color: '#111827', flex: 1, fontSize: 14, outlineStyle: 'none' as never },
   searchClear: { alignItems: 'center', backgroundColor: '#dbe6f6', borderRadius: 999, height: 20, justifyContent: 'center', marginRight: 6, width: 20 },
   searchClearText: { color: '#5b6e8d', fontSize: 11, fontWeight: '700' },
-  searchSubmit: { backgroundColor: '#23634f', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  searchSubmit: { backgroundColor: '#8f111b', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
   searchSubmitText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   hero: {
     backgroundColor: '#edf5ff',
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   heroCompact: { minHeight: 240 },
-  featuredPlay: { alignSelf: 'flex-start', backgroundColor: '#142950', borderRadius: 10, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  featuredPlay: { alignSelf: 'flex-start', backgroundColor: '#241b1b', borderRadius: 10, marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
   featuredPlayText: { color: '#ffffff', fontSize: 12, fontWeight: '800' },
   heroMobile: { flexDirection: 'column' },
   cover: { aspectRatio: 16 / 9, backgroundColor: '#e5e7eb', height: 121, width: '100%' },
@@ -642,25 +642,25 @@ const styles = StyleSheet.create({
   coverLargeMobile: { minHeight: 210, width: '100%' },
   coverFallback: { alignItems: 'center', backgroundColor: '#edf5ff', justifyContent: 'center' },
   coverLogo: { height: 52, width: 52 },
-  coverMark: { color: '#23634f', fontFamily: 'serif', fontSize: 44, fontWeight: '700' },
+  coverMark: { color: '#8f111b', fontFamily: 'serif', fontSize: 44, fontWeight: '700' },
   coverCaption: { color: '#1f3f75', fontSize: 10, marginTop: 8 },
   heroCopy: { flex: 1, justifyContent: 'center', padding: 38 },
   heroCopyMobile: { padding: 24 },
-  heroTitle: { color: '#142950', fontSize: 31, fontWeight: '800', lineHeight: 37, marginTop: 12 },
+  heroTitle: { color: '#241b1b', fontSize: 31, fontWeight: '800', lineHeight: 37, marginTop: 12 },
   heroTitleMobile: { fontSize: 27, lineHeight: 33 },
-  eyebrow: { color: '#23634f', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
+  eyebrow: { color: '#8f111b', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
   heroMeta: { color: '#4c688d', fontSize: 14, marginTop: 12 },
   heroDescription: { color: '#415678', fontSize: 15, lineHeight: 23, marginTop: 16, maxWidth: 540 },
   heroAction: { marginTop: 20 },
   section: { marginTop: 42 },
   featuredSection: { backgroundColor: '#eaf3ff', borderColor: '#c9dcf6', borderRadius: 22, borderWidth: 1, marginTop: 28, padding: 18 },
   sectionTitleRow: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  sectionTitle: { color: '#142950', fontSize: 25, fontWeight: '800' },
-  viewAll: { color: '#23634f', fontSize: 12, fontWeight: '700' },
+  sectionTitle: { color: '#241b1b', fontSize: 25, fontWeight: '800' },
+  viewAll: { color: '#8f111b', fontSize: 12, fontWeight: '700' },
   shelf: { gap: 16, paddingVertical: 6 },
   shelfTrack: { alignItems: 'center', flexDirection: 'row', minWidth: 0 },
   shelfArrow: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#dbe4ee', borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
-  shelfArrowText: { color: '#23634f', fontSize: 24, lineHeight: 28 },
+  shelfArrowText: { color: '#8f111b', fontSize: 24, lineHeight: 28 },
   emptyShelf: { color: '#64748b', fontSize: 13, paddingHorizontal: 10, paddingVertical: 20 },
   recordingCard: {
     backgroundColor: '#ffffff',
@@ -674,19 +674,19 @@ const styles = StyleSheet.create({
   },
   mediaPressable: { position: 'relative' },
   mediaPressableActive: { opacity: 0.96 },
-  cardPlayOverlay: { alignItems: 'center', backgroundColor: '#23634f', borderRadius: 999, height: 42, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -21 }, { translateY: -21 }], width: 42 },
+  cardPlayOverlay: { alignItems: 'center', backgroundColor: '#8f111b', borderRadius: 999, height: 42, justifyContent: 'center', left: '50%', opacity: 1, position: 'absolute', top: '50%', transform: [{ translateX: -21 }, { translateY: -21 }], width: 42 },
   cardPlayOverlayVisible: { opacity: 1 },
   cardPlayIcon: { color: '#ffffff', fontSize: 15, marginLeft: 2 },
   cardBody: { minHeight: 105, padding: 12 },
-  cardCategory: { color: '#23634f', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  cardCategory: { color: '#8f111b', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   cardTitle: { color: '#111827', fontSize: 15, fontWeight: '800', lineHeight: 19, marginTop: 7 },
   cardMeta: { color: '#6b7280', fontSize: 12, marginTop: 6 },
   cardDate: { color: '#6a7e9b', fontSize: 11, marginTop: 5 },
   cardSkip: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 7 },
   cardSkipText: { color: '#1d4ea8', fontSize: 10, fontWeight: '800' },
   cardActions: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-  cardPlay: { alignItems: 'center', backgroundColor: '#23634f', borderRadius: 999, height: 36, justifyContent: 'center', marginTop: 10, width: 36 },
-  favorite: { color: '#23634f', fontSize: 22, marginTop: 9 },
+  cardPlay: { alignItems: 'center', backgroundColor: '#8f111b', borderRadius: 999, height: 36, justifyContent: 'center', marginTop: 10, width: 36 },
+  favorite: { color: '#8f111b', fontSize: 22, marginTop: 9 },
   queue: { color: '#4c688d', fontSize: 22, marginTop: 8 },
   download: { color: '#1d4ea8', fontSize: 20, marginTop: 8 },
   playIcon: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
@@ -704,20 +704,20 @@ const styles = StyleSheet.create({
   },
   rabbiPhoto: { backgroundColor: '#dfeaf7', height: 142, width: '100%' },
   rabbiFallback: { alignItems: 'center', justifyContent: 'center' },
-  rabbiInitials: { color: '#23634f', fontSize: 38, fontWeight: '800' },
-  rabbiName: { color: '#142950', fontSize: 18, fontWeight: '700', marginTop: 11 },
+  rabbiInitials: { color: '#8f111b', fontSize: 38, fontWeight: '800' },
+  rabbiName: { color: '#241b1b', fontSize: 18, fontWeight: '700', marginTop: 11 },
   rabbiDescription: { color: '#6a7e9b', fontSize: 12, lineHeight: 17, marginTop: 4 },
   rabbiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 },
-  categoryCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderLeftColor: '#23634f', borderLeftWidth: 3, borderRadius: 16, borderWidth: 1, minHeight: 88, padding: 16, width: 220 },
-  categoryName: { color: '#142950', fontSize: 18, fontWeight: '700' },
+  categoryCard: { backgroundColor: '#ffffff', borderColor: '#dfeaf7', borderLeftColor: '#8f111b', borderLeftWidth: 3, borderRadius: 16, borderWidth: 1, minHeight: 88, padding: 16, width: 220 },
+  categoryName: { color: '#241b1b', fontSize: 18, fontWeight: '700' },
   categoryDescription: { color: '#5b6e8d', fontSize: 12, marginTop: 8 },
   recordingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 28 },
-  pageEyebrow: { color: '#23634f', fontSize: 11, fontWeight: '800', letterSpacing: 1.7, marginTop: 44 },
-  pageTitle: { color: '#142950', fontSize: 42, fontWeight: '800', marginTop: 8 },
+  pageEyebrow: { color: '#8f111b', fontSize: 11, fontWeight: '800', letterSpacing: 1.7, marginTop: 44 },
+  pageTitle: { color: '#241b1b', fontSize: 42, fontWeight: '800', marginTop: 8 },
   pageDescription: { color: '#5b6e8d', fontSize: 15, lineHeight: 23, marginTop: 12, maxWidth: 650 },
   state: { alignItems: 'center', minHeight: 360, justifyContent: 'center' },
   youtubeState: { alignItems: 'flex-start', backgroundColor: '#f7fbfd', borderColor: '#dfeaf7', borderRadius: 16, borderWidth: 1, minHeight: 92, justifyContent: 'center', padding: 18 },
-  stateTitle: { color: '#142950', fontSize: 24, fontWeight: '800', marginTop: 15 },
+  stateTitle: { color: '#241b1b', fontSize: 24, fontWeight: '800', marginTop: 15 },
   stateText: { color: '#5b6e8d', fontSize: 14, marginTop: 12, textAlign: 'center' },
 });

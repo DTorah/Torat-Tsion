@@ -7,7 +7,7 @@ import { InlineYouTubePlayer, type ShowcaseVideo, useYouTubePlayback } from '@/c
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { withHomepageShelves } from '@/lib/homepage-shelves';
 import { DonateButton } from '@/components/donate-button';
-import { siteName, siteAttribution } from '@/lib/site';
+import { brandColors, siteName, siteAttribution } from '@/lib/site';
 import { editorAttributes, editorElementId } from '@/lib/editor-elements';
 
 type Video = ShowcaseVideo & {
@@ -149,11 +149,10 @@ function Sidebar({ onSearch, sections }: { onSearch: () => void; sections: Build
   ] as const;
   return <View style={[styles.sidebar as import('react-native').ViewStyle]}>
     <Pressable onPress={() => scrollToSection('top')} style={styles.brand}>
-      <Image contentFit="contain" source={require('@/assets/images/icon.png')} style={styles.brandLogo} />
+      <Image contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.brandLogo} />
       <View><Text style={styles.brandName}>{siteName}</Text><Text style={styles.brandCaption}>{siteAttribution}</Text></View>
     </Pressable>
     <View style={styles.nav}>{items.filter(([id]) => id === 'home' || sections.some((section) => section.source === id || (id === 'topics' && section.source?.startsWith('topic-')))).map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={({ pressed }) => [styles.navItem, index === 0 && styles.navItemActive, pressed && styles.navItemHover]}><Text style={styles.navGlyph}>{{ home: '⌂', new: '✦', all: '▤', parsha: '◒', topics: '◈', series: '▥', favorites: '★', recent: '◷' }[id]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable></View>
-    <View style={styles.sidebarDonation}><DonateButton compact /></View>
     <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Torah wisdom. A language that feels like home.</Text></View>
   </View>;
 }
@@ -267,15 +266,15 @@ export function ToratSionHome() {
       return <Shelf key={section.id} activeVideoId={activeVideo?.id || null} title={section.title} videos={sectionVideos.slice(0, section.visibleCount || sectionVideos.length)} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} overrides={editorOverrides} />;
     }
     const bannerVideo = section.banner?.videoId ? videos.find((video) => video.id === section.banner?.videoId) : null;
-    return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#172844' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => section.banner?.buttonLink ? router.push(section.banner.buttonLink as never) : playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
+    return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#241b1b' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => section.banner?.buttonLink ? router.push(section.banner.buttonLink as never) : playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
   };
 
-  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#f6f5f0' }]}>{!isMobile && <Sidebar onSearch={search} sections={customSections} />}<ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><View style={styles.brandRow}><View><Text accessibilityRole="header" style={styles.builderHeaderTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text></View><DonateButton /></View>{builder?.design?.header?.subtitle ? <Text style={styles.builderHeaderSubtitle}>{builder.design.header.subtitle}</Text> : null}<View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
+  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#fbf7f5' }]}>{!isMobile && <Sidebar onSearch={search} sections={customSections} />}<ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><View style={styles.brandRow}><View style={styles.headerIdentity}><Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.headerLogo} /><View><Text accessibilityRole="header" style={styles.builderHeaderTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text></View></View><DonateButton /></View>{builder?.design?.header?.subtitle ? <Text style={styles.builderHeaderSubtitle}>{builder.design.header.subtitle}</Text> : null}<View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
     <View style={[styles.topbar, compactHeader && styles.topbarMobile]}><View><Text style={[styles.pageTitle, isMobile && styles.pageTitleMobile]}>Torah learning. In Farsi.</Text></View><View style={[styles.searchBox, compactHeader && styles.searchBoxMobile]}><Text style={styles.searchIcon}>⌕</Text><TextInput accessibilityLabel="Search Rabbi Bakhshi shiurim" onChangeText={setQuery} onSubmitEditing={search} placeholder="Search shiurim, Parsha, topics..." placeholderTextColor="#8390a3" style={styles.searchInput} value={query} /></View></View>
 
-    {loading || builderLoading ? <View style={styles.loading}><ActivityIndicator color="#1d5fc4" size="large" /><Text style={styles.loadingText}>Gathering Rabbi Bakhshi's latest shiurim…</Text></View> : error ? <View style={styles.errorState}><Text style={styles.errorTitle}>The library is taking a moment</Text><Text style={styles.errorText}>{error}</Text></View> : null}
+    {loading || builderLoading ? <View style={styles.loading}><ActivityIndicator color="#8f111b" size="large" /><Text style={styles.loadingText}>Gathering Rabbi Bakhshi's latest shiurim…</Text></View> : error ? <View style={styles.errorState}><Text style={styles.errorTitle}>The library is taking a moment</Text><Text style={styles.errorText}>{error}</Text></View> : null}
 
-    {!loading && !builderLoading && !error && <>{!customSections.some((section) => section.type === 'builtin-shelf' && section.source === 'featured') && topicLinks}{customSections.map(renderCustomSection)}</>}<View style={styles.builderFooter}><Text style={styles.builderFooterTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text>{builder?.design?.footer?.subtitle ? <Text style={styles.builderFooterSubtitle}>{builder.design.footer.subtitle}</Text> : null}</View>
+    {!loading && !builderLoading && !error && <>{!customSections.some((section) => section.type === 'builtin-shelf' && section.source === 'featured') && topicLinks}{customSections.map(renderCustomSection)}</>}<View style={styles.builderFooter}><Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.footerLogo} /><Text style={styles.builderFooterTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text>{builder?.design?.footer?.subtitle ? <Text style={styles.builderFooterSubtitle}>{builder.design.footer.subtitle}</Text> : null}</View>
   </ScrollView></View>;
 }
 
@@ -283,55 +282,57 @@ const styles: Record<string, any> = StyleSheet.create({
   topbarMobile: { alignItems: 'stretch', flexDirection: 'column', gap: 10 },
   searchBoxMobile: { width: '100%', maxWidth: '100%' },
   quickTopics: { gap: 10, paddingBottom: 18 },
-  topicPill: { backgroundColor: '#eef1e8', borderColor: '#ded9ce', borderWidth: 1, borderRadius: 22, paddingHorizontal: 18, paddingVertical: 11 },
-  topicPillText: { color: '#20365c', fontSize: 13, fontWeight: '700' },
+  topicPill: { backgroundColor: '#fbe8e9', borderColor: '#ded9ce', borderWidth: 1, borderRadius: 22, paddingHorizontal: 18, paddingVertical: 11 },
+  topicPillText: { color: '#5e252c', fontSize: 13, fontWeight: '700' },
   shelfControls: { flexDirection: 'row', gap: 8, marginBottom: 10, alignSelf: 'flex-end' },
   shelfArrow: { borderColor: '#ded9ce', borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
   shelfMore: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, minWidth: 150, backgroundColor: '#ede9df', borderRadius: 14 },
   root: { backgroundColor: '#f7f5f0', flex: 1, flexDirection: 'row' },
+  headerIdentity: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  headerLogo: { width: 56, height: 56 },
+  footerLogo: { width: 64, height: 64, marginBottom: 12 },
   brandRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
   builderHeader: { borderBottomColor: '#dedfd7', borderBottomWidth: 1, marginBottom: 14, paddingBottom: 12 },
-  projectAttribution: { color: '#6c766e', fontSize: 12, letterSpacing: 0.3, marginTop: 7 },
-  pageIntro: { color: '#62746d', fontSize: 14, lineHeight: 23, marginTop: 12, maxWidth: 440 },
+  projectAttribution: { color: '#66707d', fontSize: 12, letterSpacing: 0.3, marginTop: 7 },
+  pageIntro: { color: '#66707d', fontSize: 14, lineHeight: 23, marginTop: 12, maxWidth: 440 },
   pageTitleMobile: { fontSize: 25, lineHeight: 32 },
-  builderHeaderTitle: { color: '#163e38', fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: '700', letterSpacing: -0.7 },
+  builderHeaderTitle: { color: '#8f111b', fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: '700', letterSpacing: -0.7 },
   builderHeaderSubtitle: { color: '#667085', marginTop: 4 },
   builderHeaderLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 10 },
-  builderHeaderLink: { color: '#0052CC', fontWeight: '700' },
+  builderHeaderLink: { color: '#8f111b', fontWeight: '700' },
   builderFooter: { borderTopColor: '#d9e2ef', borderTopWidth: 1, marginTop: 32, paddingVertical: 28 },
-  builderFooterTitle: { color: '#172844', fontSize: 18, fontWeight: '800' },
+  builderFooterTitle: { color: '#241b1b', fontSize: 18, fontWeight: '800' },
   builderFooterSubtitle: { color: '#667085', marginTop: 5 },
-  sidebar: { backgroundColor: '#102f2c', borderRightColor: '#294a43', borderRightWidth: 1, justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 28, width: 238 },
+  sidebar: { backgroundColor: '#241b1b', borderRightColor: '#493133', borderRightWidth: 1, justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 28, width: 238 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 9, marginBottom: 42, paddingHorizontal: 8 },
-  brandLogo: { backgroundColor: '#fffaf0', borderRadius: 12, height: 36, width: 36 },
+  brandLogo: { borderRadius: 12, height: 44, width: 44 },
   brandName: { color: '#fbfaf5', fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
-  brandCaption: { color: '#d6c79c', fontSize: 9, fontWeight: '500', marginTop: 5 },
+  brandCaption: { color: '#f1b6b8', fontSize: 9, fontWeight: '500', marginTop: 5 },
   nav: { gap: 6, flex: 1 },
   navItem: { alignItems: 'center', borderRadius: 12, flexDirection: 'row', gap: 14, paddingHorizontal: 13, paddingVertical: 12 },
-  navItemActive: { backgroundColor: '#254b42', borderLeftColor: '#dcc18a', borderLeftWidth: 3 },
-  navItemHover: { backgroundColor: '#2b5149' },
+  navItemActive: { backgroundColor: '#5e252c', borderLeftColor: '#dcc18a', borderLeftWidth: 3 },
+  navItemHover: { backgroundColor: '#43272b' },
   navGlyph: { color: '#afbdd2', fontSize: 19, textAlign: 'center', width: 22 },
   navLabel: { color: '#d8e0ec', fontSize: 14, fontWeight: '600' },
-  sidebarDonation: { marginTop: 20, marginBottom: 18 },
-  sidebarFooter: { borderColor: '#36524a', borderRadius: 14, borderWidth: 1, padding: 14 },
+  sidebarFooter: { borderColor: '#624044', borderRadius: 14, borderWidth: 1, padding: 14 },
   sidebarFooterTitle: { color: '#f4eee0', fontSize: 12, fontWeight: '800' },
-  sidebarFooterText: { color: '#b2c3b8', fontSize: 11, lineHeight: 16, marginTop: 7 },
+  sidebarFooterText: { color: '#c6b1b4', fontSize: 11, lineHeight: 16, marginTop: 7 },
   main: { flex: 1, minWidth: 0 },
   mainContent: { alignSelf: 'center', maxWidth: 1500, paddingBottom: 90, paddingHorizontal: 52, paddingTop: 16, width: '100%' },
   mainContentMobile: { paddingHorizontal: 16, paddingTop: 12 },
   topbar: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'space-between', marginBottom: 16 },
-  context: { color: '#53786a', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
-  pageTitle: { color: '#173e35', fontFamily: 'Georgia, serif', fontSize: 27, fontWeight: '400', letterSpacing: -0.6, lineHeight: 34, marginTop: 0 },
+  context: { color: '#8f111b', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
+  pageTitle: { color: '#241b1b', fontFamily: 'Georgia, serif', fontSize: 27, fontWeight: '400', letterSpacing: -0.6, lineHeight: 34, marginTop: 0 },
   searchBox: { alignItems: 'center', backgroundColor: '#fff', borderColor: '#e4e0d7', borderRadius: 13, borderWidth: 1, flexDirection: 'row', maxWidth: 360, paddingHorizontal: 14, width: '33%' },
   searchIcon: { color: '#41648f', fontSize: 22 },
-  searchInput: { color: '#172844', flex: 1, fontSize: 13, paddingHorizontal: 10, paddingVertical: 13 },
-  hero: { backgroundColor: '#102f2c', borderRadius: 20, flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 18, overflow: 'hidden', minHeight: 290 },
+  searchInput: { color: '#241b1b', flex: 1, fontSize: 13, paddingHorizontal: 10, paddingVertical: 13 },
+  hero: { backgroundColor: '#241b1b', borderRadius: 20, flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 18, overflow: 'hidden', minHeight: 290 },
   heroStacked: { flexDirection: 'column', alignItems: 'stretch' },
-  heroArtwork: { width: '56%', aspectRatio: 16 / 9, backgroundColor: '#0b211f' },
+  heroArtwork: { width: '56%', aspectRatio: 16 / 9, backgroundColor: '#1e1718' },
   heroArtworkStacked: { width: '100%' },
   heroArtworkFallback: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   heroContentStacked: { width: '100%', padding: 20 },
-  heroImage: { backgroundColor: '#172844', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
+  heroImage: { backgroundColor: '#241b1b', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   heroShade: { backgroundColor: 'rgba(7,30,26,0.72)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   heroContent: { width: '44%', padding: 26 },
   heroEyebrow: { color: '#e3c88f', fontSize: 11, fontWeight: '800', letterSpacing: 1.6 },
@@ -339,7 +340,7 @@ const styles: Record<string, any> = StyleSheet.create({
   heroDescription: { color: '#d7dfeb', fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 590 },
   heroActions: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 20 },
   listenButton: { backgroundColor: '#e3c68c', borderRadius: 10, paddingHorizontal: 19, paddingVertical: 12 },
-  listenButtonText: { color: '#17233d', fontSize: 13, fontWeight: '800' },
+  listenButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
   heroFavorite: { borderColor: '#c9d4e4', borderRadius: 10, borderWidth: 1, paddingHorizontal: 17, paddingVertical: 11 },
   heroFavoriteText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   heroDots: { flexDirection: 'row', gap: 6, marginTop: 22 },
@@ -347,9 +348,9 @@ const styles: Record<string, any> = StyleSheet.create({
   heroDotActive: { backgroundColor: '#e2bd78', opacity: 1, width: 22 },
   shelf: { marginBottom: 37, minWidth: 0 },
   shelfHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  shelfTitle: { color: '#183e35', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
-  shelfRule: { backgroundColor: '#d1a96b', height: 2, marginTop: 7, width: 32 },
-  viewAll: { color: '#2b66bc', fontSize: 12, fontWeight: '800' },
+  shelfTitle: { color: '#241b1b', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  shelfRule: { backgroundColor: '#c51f2b', height: 2, marginTop: 7, width: 32 },
+  viewAll: { color: '#8f111b', fontSize: 12, fontWeight: '800' },
   shelfTrack: { gap: 15, paddingTop: 4, paddingBottom: 8, paddingRight: 20 },
   card: { backgroundColor: '#fff', borderColor: '#e4e7df', boxShadow: '0 4px 18px rgba(20,48,37,0.04)', borderRadius: 17, borderWidth: 1, overflow: 'hidden', position: 'relative', width: 224 },
   cardPressable: { paddingBottom: 12 },
@@ -360,41 +361,41 @@ const styles: Record<string, any> = StyleSheet.create({
   thumbnailZoom: { transform: [{ scale: 1.035 }] },
   thumbnailShade: { backgroundColor: '#000', bottom: 0, left: 0, opacity: 0, position: 'absolute', right: 0, top: 0 },
   thumbnailShadeVisible: { opacity: 0.18 },
-  thumbnailFallback: { alignItems: 'center', backgroundColor: '#20365c', height: '100%', justifyContent: 'center', width: '100%' },
+  thumbnailFallback: { alignItems: 'center', backgroundColor: '#5e252c', height: '100%', justifyContent: 'center', width: '100%' },
   thumbnailFallbackText: { color: '#e3c88f', fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
   playCircle: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 24, height: 48, justifyContent: 'center', left: '50%', opacity: 0, position: 'absolute', top: '50%', transform: [{ translateX: -24 }, { translateY: -24 }], width: 48 },
   playCircleVisible: { opacity: 1 },
-  playIcon: { color: '#1d5fc4', fontSize: 16, marginLeft: 2 },
-  badge: { backgroundColor: '#172844', bottom: 8, color: '#fff', fontSize: 10, fontWeight: '800', left: 8, paddingHorizontal: 7, paddingVertical: 4, position: 'absolute' },
+  playIcon: { color: '#8f111b', fontSize: 16, marginLeft: 2 },
+  badge: { backgroundColor: '#241b1b', bottom: 8, color: '#fff', fontSize: 10, fontWeight: '800', left: 8, paddingHorizontal: 7, paddingVertical: 4, position: 'absolute' },
   liveBadge: { backgroundColor: '#d52d3f', borderRadius: 4, left: 8, paddingHorizontal: 7, paddingVertical: 4, position: 'absolute', top: 8 },
   liveBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
-  cardTitle: { color: '#172844', fontSize: 14, fontWeight: '800', lineHeight: 19, marginHorizontal: 12, marginTop: 11 },
-  cardMeta: { color: '#596e64', fontSize: 11, marginHorizontal: 12, marginTop: 6 },
+  cardTitle: { color: '#241b1b', fontSize: 14, fontWeight: '800', lineHeight: 19, marginHorizontal: 12, marginTop: 11 },
+  cardMeta: { color: '#66707d', fontSize: 11, marginHorizontal: 12, marginTop: 6 },
   dedicatedLink: { marginHorizontal: 12, marginTop: 8 },
-  dedicatedLinkText: { color: '#2b66bc', fontSize: 11, fontWeight: '700' },
+  dedicatedLinkText: { color: '#8f111b', fontSize: 11, fontWeight: '700' },
   favoriteButton: { position: 'absolute', right: 7, top: 7 },
   favoriteIcon: { color: '#fff', fontSize: 22, textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 3 },
   favoriteActive: { color: '#e5bd75' },
   loading: { alignItems: 'center', backgroundColor: '#fff', borderRadius: 18, justifyContent: 'center', minHeight: 300 },
   loadingText: { color: '#52627a', fontSize: 14, marginTop: 13 },
   errorState: { alignItems: 'center', backgroundColor: '#fff', borderColor: '#e3ddd2', borderRadius: 18, borderWidth: 1, justifyContent: 'center', minHeight: 280, padding: 28 },
-  errorTitle: { color: '#172844', fontSize: 21, fontWeight: '800' },
+  errorTitle: { color: '#241b1b', fontSize: 21, fontWeight: '800' },
   errorText: { color: '#718099', fontSize: 14, marginTop: 9, textAlign: 'center' },
   customSection: { borderRadius: 16, marginBottom: 24, padding: 22 },
   customSectionImage: { borderRadius: 12, height: 190, marginBottom: 14, width: '100%' },
   customSectionTitle: { fontSize: 22, fontWeight: '800' },
   customSectionSubtitle: { color: '#718099', fontSize: 14, marginTop: 8 },
-  customSectionButton: { alignSelf: 'flex-start', backgroundColor: '#0052CC', borderRadius: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 9 },
+  customSectionButton: { alignSelf: 'flex-start', backgroundColor: '#8f111b', borderRadius: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 9 },
   customSectionButtonText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   library: { marginBottom: 32, marginTop: 26 },
   libraryCount: { color: '#718099', fontSize: 13 },
   filterRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 14, marginTop: 12 },
-  filterInput: { backgroundColor: '#fff', borderColor: '#d8e0ea', borderRadius: 8, borderWidth: 1, color: '#172844', minHeight: 36, paddingHorizontal: 10, width: 130 },
+  filterInput: { backgroundColor: '#fff', borderColor: '#d8e0ea', borderRadius: 8, borderWidth: 1, color: '#241b1b', minHeight: 36, paddingHorizontal: 10, width: 130 },
   filterChip: { backgroundColor: '#fff', borderColor: '#d8e0ea', borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
-  filterChipActive: { backgroundColor: '#dbeaff', borderColor: '#0052CC' },
+  filterChipActive: { backgroundColor: '#fbe8e9', borderColor: '#8f111b' },
   filterChipText: { color: '#52627a', fontSize: 11, fontWeight: '700' },
   libraryGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   emptyLibrary: { color: '#718099', paddingVertical: 20 },
-  loadMore: { alignSelf: 'center', backgroundColor: '#0052CC', borderRadius: 10, marginTop: 20, paddingHorizontal: 18, paddingVertical: 11 },
+  loadMore: { alignSelf: 'center', backgroundColor: '#8f111b', borderRadius: 10, marginTop: 20, paddingHorizontal: 18, paddingVertical: 11 },
   loadMoreText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

@@ -1,4 +1,8 @@
 :root {
+  --brand-burgundy: #8f111b;
+  --brand-red: #c51f2b;
+  --brand-ink: #241b1b;
+  --brand-paper: #fffdfb;
   --font-display:
     Inter, Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
     Segoe UI Symbol, Noto Color Emoji;
@@ -10,7 +14,7 @@
 
 html,
 body {
-  background: #f6f5f0;
+  background: #fbf7f5;
   font-family: Inter, Roboto, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -24,8 +28,8 @@ body {
 }
 
 ::selection {
-  background: #dbe8d7;
-  color: #163e38;
+  background: #fbe8e9;
+  color: #8f111b;
 }
 
 :where(a, button, input, [role="button"], [role="link"]):focus-visible {

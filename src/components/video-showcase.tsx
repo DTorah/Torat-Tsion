@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   thumbnailShadeVisible: { opacity: 0.16 },
   playOverlay: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 999, height: 48, justifyContent: 'center', left: '50%', opacity: 0, position: 'absolute', top: '50%', transform: [{ translateX: -24 }, { translateY: -24 }], width: 48 },
   playOverlayVisible: { opacity: 1 },
-  playIcon: { color: '#0052CC', fontSize: 17, marginLeft: 2 },
+  playIcon: { color: '#8f111b', fontSize: 17, marginLeft: 2 },
   fallback: { alignItems: 'center', justifyContent: 'center' },
   fallbackText: { color: '#356078', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   title: { color: '#111827', fontSize: 14, fontWeight: '800', lineHeight: 19, marginHorizontal: 12, marginTop: 10 },
