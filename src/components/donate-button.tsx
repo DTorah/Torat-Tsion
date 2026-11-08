@@ -1,13 +1,20 @@
 import { useState } from 'react';
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { donationUrl } from '@/lib/site';
 
 export function DonateButton({ compact = false }: { compact?: boolean }) {
   const [highlighted, setHighlighted] = useState(false);
   return (
-    <Link href={donationUrl} asChild>
-      <Pressable
+    <Pressable
+        {...(Platform.OS === 'web' ? { href: donationUrl } : {})}
+        onPress={(event) => {
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            event.preventDefault();
+            window.location.assign(donationUrl);
+          } else {
+            void Linking.openURL(donationUrl);
+          }
+        }}
         accessibilityRole="link"
         accessibilityLabel="Donate through TorahHelp — help Torah reach more people"
         onHoverIn={() => setHighlighted(true)}
@@ -24,8 +31,7 @@ export function DonateButton({ compact = false }: { compact?: boolean }) {
           <Text style={[styles.caption, compact && styles.captionCompact]}>{compact ? 'Support Torah learning' : 'Help Torah reach more people'}</Text>
         </View>
         <Text accessible={false} style={styles.arrow}>↗</Text>
-      </Pressable>
-    </Link>
+    </Pressable>
   );
 }
 
