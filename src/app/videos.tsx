@@ -50,12 +50,12 @@ export default function VideosScreen() {
   const isNarrow = width < 900;
   return <ScrollView contentContainerStyle={[styles.page, isNarrow && styles.pageNarrow]}>
     <PublicHeader query={query} setQuery={setQuery} />
-    <View style={styles.hero}><Text style={styles.eyebrow}>TORAT SION · VIDEO LIBRARY</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Browse the complete Torat Sion class library and play any recording without leaving the site.</Text><TextInput accessibilityLabel="Search classes" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
+    <View style={styles.hero}><Text style={styles.eyebrow}>TORAH FARSI · VIDEO LIBRARY</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Browse the complete Torah Farsi class library and play any recording without leaving the site.</Text><TextInput accessibilityLabel="Search classes" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
     <View style={[styles.contentLayout, isNarrow && styles.contentLayoutNarrow]}>
       <View style={styles.videoContent}>
         {loading ? <Text style={styles.body}>Loading official classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>The video library is not configured</Text><Text style={styles.body}>No placeholder videos are shown until the library is configured.</Text></View> : null}
         {!loading && !error && payload?.configured && (videos.length ? <VideoShowcase initialVideoId={requestedVideo} title="All Shiurim" videos={videos} /> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public classes were returned yet.'}</Text>)}
-        <View style={styles.notice}><Text style={styles.noticeTitle}>Torat Sion video library</Text><Text style={styles.body}>Select any thumbnail to continue watching without leaving this site.</Text></View>
+        <View style={styles.notice}><Text style={styles.noticeTitle}>Torah Farsi video library</Text><Text style={styles.body}>Select any thumbnail to continue watching without leaving this site.</Text></View>
       </View>
     </View>
   </ScrollView>;

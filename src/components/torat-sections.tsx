@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 export function ToratWelcome() {
   return <View style={styles.wrap}>
     <View style={styles.compactWelcome}>
-      <View style={styles.kicker}><View style={styles.kickerDot} /><Text style={styles.eyebrow}>TORAT TSION · TORAH LISTENING</Text></View>
+      <View style={styles.kicker}><View style={styles.kickerDot} /><Text style={styles.eyebrow}>TORAH FARSI · TORAH LISTENING</Text></View>
       <Text style={styles.heroTitle}>Listen, learn, and return.</Text>
       <Text style={styles.heroText}>Browse Rabbi Isaac Bakhshi's shiurim by topic, source, and season. Press play to begin.</Text>
       <Link href="/explore" asChild><Pressable style={styles.button}><Text style={styles.buttonText}>Browse all shiurim</Text></Pressable></Link>

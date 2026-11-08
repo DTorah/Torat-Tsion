@@ -55,7 +55,7 @@ export function YouTubePlaybackProvider({ children }: { children: ReactNode }) {
 }
 
 export function InlineYouTubePlayer({ video }: { video: ShowcaseVideo }) {
-  return <View style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torat Sion player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></View>;
+  return <View style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torah Farsi player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></View>;
 }
 
 export function VideoCard({ video, onPlay, playing = false }: { video: ShowcaseVideo; onPlay: () => void; playing?: boolean }) {
@@ -63,8 +63,8 @@ export function VideoCard({ video, onPlay, playing = false }: { video: ShowcaseV
   const [focused, setFocused] = useState(false);
   return <View style={[styles.card, (hovered || focused) && styles.cardHovered, (hovered || focused) && styles.cardHoverState]}>
     <View style={styles.thumbnailWrap}>
-      {playing ? <Pressable accessibilityLabel={`Focus player for ${video.title}`} onPress={onPlay} style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torat Sion player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></Pressable> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>
-        {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, (hovered || focused) && styles.thumbnailZoom]} /> : <View style={[styles.thumbnail, styles.fallback, (hovered || focused) && styles.thumbnailZoom]}><Text style={styles.fallbackText}>TORAT TSION</Text></View>}
+      {playing ? <Pressable accessibilityLabel={`Focus player for ${video.title}`} onPress={onPlay} style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torah Farsi player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></Pressable> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>
+        {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, (hovered || focused) && styles.thumbnailZoom]} /> : <View style={[styles.thumbnail, styles.fallback, (hovered || focused) && styles.thumbnailZoom]}><Text style={styles.fallbackText}>TORAH FARSI</Text></View>}
         <View style={[styles.thumbnailShade, (hovered || focused) && styles.thumbnailShadeVisible]} />
         <View style={[styles.playOverlay, (hovered || focused) && styles.playOverlayVisible]}><Text style={styles.playIcon}>▶</Text></View>
       </Pressable>}

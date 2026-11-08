@@ -10,7 +10,7 @@
 
 html,
 body {
-  background: #f8f9fa;
+  background: #f6f5f0;
   font-family: Inter, Roboto, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -21,4 +21,22 @@ body {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+::selection {
+  background: #dbe8d7;
+  color: #163e38;
+}
+
+:where(a, button, input, [role="button"], [role="link"]):focus-visible {
+  outline: 2px solid #a67d38;
+  outline-offset: 4px;
+}
+
+[id^="topic-"], #all, #new, #favorites, #recent {
+  scroll-margin-top: 24px;
+}
+
+#torah-farsi-hero-shade {
+  background: linear-gradient(90deg, rgba(7,30,26,0.95) 0%, rgba(7,30,26,0.65) 55%, rgba(7,30,26,0.12) 100%);
 }

@@ -11,7 +11,7 @@ export default function FavoritesScreen() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    loadListenerRecordings().then(setRecordings).catch(() => setError('The Torat Tsion library could not be reached. Check your connection and try again.')).finally(() => setLoading(false));
+    loadListenerRecordings().then(setRecordings).catch(() => setError('The Torah Farsi library could not be reached. Check your connection and try again.')).finally(() => setLoading(false));
   }, []);
   useEffect(() => { void load(); }, [load]);
   const items = recordings.filter((recording) => favorites.includes(recording.id));
