@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Link as RouterLink, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getShiurSkipSeconds, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
@@ -12,7 +12,7 @@ import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
 import { VideoShowcase } from '@/components/video-showcase';
-import { donationUrl } from '@/lib/site';
+import { DonateButton } from '@/components/donate-button';
 import { ToratSionHome } from '@/components/torat-sion-home';
 
 const Link: any = RouterLink;
@@ -88,10 +88,6 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
       onSubmit ? onSubmit(normalizedQuery) : router.push(`/search?q=${encodeURIComponent(normalizedQuery)}` as never);
     }
   };
-  const openDonation = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(donationUrl);
-    else void Linking.openURL(donationUrl);
-  };
   const navItems = [
     { href: '/', label: 'Home' },
   ] as const;
@@ -117,7 +113,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
               </Link>
             );
           })}
-          <Pressable accessibilityRole="link" accessibilityLabel="Donate to TorahHelp" onPress={openDonation} style={({ hovered }) => [styles.navItem, styles.donateNavItem, hovered && styles.navItemHover]}><LineIcon name="donate" /><Text style={styles.navText}>Donate</Text></Pressable>
+          <DonateButton />
         </View>
         {!isMobile && <View style={styles.minyanPanel}><Text style={styles.minyanTitle}>Minyan Times</Text>{minyanPreview === null ? <ActivityIndicator color="#0052CC" size="small" /> : minyanPreview.length ? minyanPreview.slice(0, 2).map((item) => <View key={`${item.day}-${item.name}-${item.time}`} style={styles.minyanRow}><Text numberOfLines={1} style={styles.minyanName}>{item.name}</Text><Text style={styles.minyanTime}>{item.time}</Text></View>) : <Text style={styles.minyanEmpty}>Times not published</Text>}</View>}
         <Link href="/admin" asChild><Pressable style={styles.adminLinkButton} accessibilityLabel="Admin sign in"><Text style={styles.adminLinkText}>Admin</Text></Pressable></Link>
