@@ -14,7 +14,7 @@ SplashScreen.preventAutoHideAsync();
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={Platform.OS === 'web' ? DefaultTheme : colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Head><title>Torah Farsi | A project of Torat Sion</title><meta name="description" content="Listen to Persian Torah classes and recordings. A project of Torat Sion." /></Head>
       <ListenerProvider>
         <YouTubePlaybackProvider>

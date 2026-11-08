@@ -7,9 +7,9 @@ export const brandColors = {
   ink: '#241b1b',
   burgundy: '#8f111b',
   red: '#c51f2b',
-  blush: '#fbe8e9',
+  blush: '#f9e8ec',
   silver: '#66707d',
   gold: '#c9a35b',
   paper: '#fffdfb',
-  background: '#fbf7f5',
+  background: '#fffaf7',
 } as const;
