@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AdminLogin, AdminShell, adminApiUrl, useAdminSession } from '@/components/admin-shell';
 
-const stageTwo = [['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis'], ['Categories', '/admin/categories'], ['Featured', '/admin/featured'], ['Covers', '/admin/covers'], ['Carousel', '/admin/carousel']] as const;
+const stageTwo = [['Analytics', '/admin/analytics'], ['Recordings', '/admin/recordings'], ['Rabbis', '/admin/rabbis'], ['Categories', '/admin/categories'], ['Featured', '/admin/featured'], ['Covers', '/admin/covers'], ['Carousel', '/admin/carousel']] as const;
 type DriveDiagnostic = {
   configuredFolderId?: string;
   folderFormatValid?: boolean;

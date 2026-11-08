@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { InlineYouTubePlayer, type ShowcaseVideo, useYouTubePlayback } from '@/components/video-showcase';
+import { apiUrl } from '@/lib/api';
 import { fetchPublicJson } from '@/lib/public-api-cache';
 import { withHomepageShelves } from '@/lib/homepage-shelves';
 import { DonateButton } from '@/components/donate-button';
@@ -137,6 +138,7 @@ function scrollToSection(id: string) {
 }
 
 function Sidebar({ onSearch, sections }: { onSearch: () => void; sections: BuilderSection[] }) {
+  const router = useRouter();
   const items = [
     ['home', 'Home'],
     ['new', 'New Shiurim'],
@@ -153,6 +155,7 @@ function Sidebar({ onSearch, sections }: { onSearch: () => void; sections: Build
       <View><Text style={styles.brandName}>{siteName}</Text><Text style={styles.brandCaption}>{siteAttribution}</Text></View>
     </Pressable>
     <View style={styles.nav}>{items.filter(([id]) => id === 'home' || sections.some((section) => section.source === id || (id === 'topics' && section.source?.startsWith('topic-')))).map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={({ pressed }) => [styles.navItem, index === 0 && styles.navItemActive, pressed && styles.navItemHover]}><Text style={styles.navGlyph}>{{ home: '⌂', new: '✦', all: '▤', parsha: '◒', topics: '◈', series: '▥', favorites: '★', recent: '◷' }[id]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable></View>
+    <View style={styles.sidebarTools}><Pressable accessibilityRole="button" accessibilityLabel="Admin sign in" onPress={() => router.push('/admin' as never)} style={styles.adminButton}><Text style={styles.adminButtonText}>Admin</Text></Pressable><DonateButton compact /></View>
     <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Torah wisdom. A language that feels like home.</Text></View>
   </View>;
 }
@@ -231,6 +234,10 @@ export function ToratSionHome() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    void fetch(apiUrl('/api/analytics/event'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'page_view', path: '/' }) }).catch(() => {});
+  }, []);
+
   const featured = useMemo(() => videos.slice(0, 5), [videos]);
   useEffect(() => { if (featured.length < 2) return; const timer = setInterval(() => setFeatureIndex((index) => (index + 1) % featured.length), 8000); return () => clearInterval(timer); }, [featured.length]);
   const filtered = useMemo(() => { const normalized = query.trim().toLowerCase(); return normalized ? videos.filter((video) => metadata(video).toLowerCase().includes(normalized) || findTopic(video).toLowerCase().includes(normalized) || Boolean(findParsha(video)?.toLowerCase().includes(normalized))) : videos; }, [query, videos]);
@@ -243,7 +250,10 @@ export function ToratSionHome() {
   const toggleFavorite = (id: string) => setFavoriteIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); void AsyncStorage.setItem(favoritesKey, JSON.stringify([...next])); return next; });
   const playVideo = (video: Video) => { playSharedVideo(video); setRecentIds((current) => { const next = [video.id, ...current.filter((id) => id !== video.id)].slice(0, 12); void AsyncStorage.setItem('torat-sion.youtube-recent', JSON.stringify(next)); return next; }); };
   const activeFeature = featured[featureIndex] || videos[0];
-  const search = () => scrollToSection('all');
+  const search = () => {
+    if (query.trim()) void fetch(apiUrl('/api/analytics/event'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'search', query: query.trim(), path: '/' }) }).catch(() => {});
+    scrollToSection('all');
+  };
   const customSections = withHomepageShelves(builder || { sections: [] }).sections?.filter((section) => section.enabled !== false && section.responsive?.[width < 600 ? 'mobile' : width < 1100 ? 'tablet' : 'desktop'] !== false) || [];
   const editorOverrides = builder?.elements || {};
   const topicLinks = <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickTopics}>{[["all", "All Shiurim"], ...keywordShelves.filter((shelf) => customSections.some((section) => section.source === `topic-${shelf.title.toLowerCase()}`)).map((shelf) => [`topic-${shelf.title.toLowerCase()}`, shelf.title]), ["favorites", "Favorites"]].filter(([id]) => customSections.some((section) => section.source === id)).map(([id, label]) => <Pressable key={id} accessibilityRole="button" onPress={() => scrollToSection(id)} style={styles.topicPill}><Text style={styles.topicPillText}>{label}</Text></Pressable>)}</ScrollView>;
@@ -269,7 +279,7 @@ export function ToratSionHome() {
     return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#241b1b' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => section.banner?.buttonLink ? router.push(section.banner.buttonLink as never) : playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
   };
 
-  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#fffaf7' }]}>{!isMobile && <Sidebar onSearch={search} sections={customSections} />}<ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><View style={styles.brandRow}><View style={styles.headerIdentity}><Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.headerLogo} /><View><Text accessibilityRole="header" style={styles.builderHeaderTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text></View></View><DonateButton /></View>{builder?.design?.header?.subtitle ? <Text style={styles.builderHeaderSubtitle}>{builder.design.header.subtitle}</Text> : null}<View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
+  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#fffaf7' }]}>{!isMobile && <Sidebar onSearch={search} sections={customSections} />}<ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><View style={styles.brandRow}><View style={styles.headerIdentity}><Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.headerLogo} /><View><Text accessibilityRole="header" style={styles.builderHeaderTitle}>{siteName}</Text><Text style={styles.projectAttribution}>{siteAttribution}</Text></View></View><View style={styles.headerActions}><DonateButton /><Pressable accessibilityRole="button" accessibilityLabel="Admin sign in" onPress={() => router.push('/admin' as never)} style={styles.adminButton}><Text style={styles.adminButtonText}>Admin</Text></Pressable></View></View>{builder?.design?.header?.subtitle ? <Text style={styles.builderHeaderSubtitle}>{builder.design.header.subtitle}</Text> : null}<View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
     <View style={[styles.topbar, compactHeader && styles.topbarMobile]}><View><Text style={[styles.pageTitle, isMobile && styles.pageTitleMobile]}>Torah learning. In Farsi.</Text></View><View style={[styles.searchBox, compactHeader && styles.searchBoxMobile]}><Text style={styles.searchIcon}>⌕</Text><TextInput accessibilityLabel="Search Rabbi Bakhshi shiurim" onChangeText={setQuery} onSubmitEditing={search} placeholder="Search shiurim, Parsha, topics..." placeholderTextColor="#8390a3" style={styles.searchInput} value={query} /></View></View>
 
     {loading || builderLoading ? <View style={styles.loading}><ActivityIndicator color="#8f111b" size="large" /><Text style={styles.loadingText}>Gathering Rabbi Bakhshi's latest shiurim…</Text></View> : error ? <View style={styles.errorState}><Text style={styles.errorTitle}>The library is taking a moment</Text><Text style={styles.errorText}>{error}</Text></View> : null}
@@ -291,6 +301,10 @@ const styles: Record<string, any> = StyleSheet.create({
   headerIdentity: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   headerLogo: { width: 56, height: 56 },
   footerLogo: { width: 64, height: 64, marginBottom: 12 },
+  sidebarTools: { gap: 12, marginTop: 16, marginBottom: 18 },
+  headerActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12, flexGrow: 1, justifyContent: 'flex-end' },
+  adminButton: { alignItems: 'center', justifyContent: 'center', minHeight: 46, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, borderColor: '#d7b7bf', borderWidth: 1, backgroundColor: '#ffffff' },
+  adminButtonText: { color: '#874356', fontSize: 14, fontWeight: '700' },
   brandRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
   builderHeader: { borderBottomColor: '#dedfd7', borderBottomWidth: 1, marginBottom: 14, paddingBottom: 12 },
   projectAttribution: { color: '#66707d', fontSize: 12, letterSpacing: 0.3, marginTop: 7 },

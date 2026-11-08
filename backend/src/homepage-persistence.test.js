@@ -110,6 +110,29 @@ async function main() {
     await route(unpublished, 'put', '/api/admin/home-builder/draft', document);
     assert.equal((await route(unpublished, 'get', '/api/home-builder')).body.sections.length, 0, 'unpublished shelves must not leak publicly');
 
+    // Analytics remains admin-only and aggregates retained events for 30 days.
+    const analyticsRoute = first.app.router.stack.find((layer) => layer.route?.path === '/api/admin/analytics').route;
+    let passed = false;
+    const denied = { statusCode: 200, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; } };
+    analyticsRoute.stack[0].handle({ get: () => undefined }, denied, () => { passed = true; });
+    assert.equal(denied.statusCode, 401);
+    assert.equal(passed, false);
+    await first.mutateContent((content) => {
+      content.analytics = { events: [
+        { type: 'page_view', createdAt: new Date().toISOString() },
+        { type: 'search', createdAt: new Date().toISOString() },
+        { type: 'video_play', videoId: 'class-one', createdAt: new Date().toISOString() },
+        { type: 'video_play', videoId: 'class-one', createdAt: new Date().toISOString() },
+        { type: 'page_view', createdAt: new Date(Date.now() - 31 * 86400000).toISOString() },
+      ] };
+    });
+    const analytics = (await route(first, 'get', '/api/admin/analytics')).body;
+    assert.equal(analytics.pageViews, 1);
+    assert.equal(analytics.searches, 1);
+    assert.equal(analytics.videoPlays, 2);
+    assert.equal(analytics.popularVideos[0].videoId, 'class-one');
+    assert.equal(analytics.popularVideos[0].plays, 2);
+
     failWrites = true;
     assert.equal((await route(nextInstance, 'post', '/api/admin/home-builder/publish')).statusCode, 500, 'failed durable writes must not claim publish success');
     console.log('Homepage publish, restart persistence, title matching, future uploads, and storage failure tests passed');
