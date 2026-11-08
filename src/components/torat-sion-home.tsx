@@ -153,6 +153,7 @@ function Sidebar({ onSearch, sections }: { onSearch: () => void; sections: Build
       <View><Text style={styles.brandName}>{siteName}</Text><Text style={styles.brandCaption}>{siteAttribution}</Text></View>
     </Pressable>
     <View style={styles.nav}>{items.filter(([id]) => id === 'home' || sections.some((section) => section.source === id || (id === 'topics' && section.source?.startsWith('topic-')))).map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={({ pressed }) => [styles.navItem, index === 0 && styles.navItemActive, pressed && styles.navItemHover]}><Text style={styles.navGlyph}>{{ home: '⌂', new: '✦', all: '▤', parsha: '◒', topics: '◈', series: '▥', favorites: '★', recent: '◷' }[id]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable></View>
+    <View style={styles.sidebarDonation}><DonateButton compact /></View>
     <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Torah wisdom. A language that feels like home.</Text></View>
   </View>;
 }
@@ -311,6 +312,7 @@ const styles: Record<string, any> = StyleSheet.create({
   navItemHover: { backgroundColor: '#2b5149' },
   navGlyph: { color: '#afbdd2', fontSize: 19, textAlign: 'center', width: 22 },
   navLabel: { color: '#d8e0ec', fontSize: 14, fontWeight: '600' },
+  sidebarDonation: { marginTop: 20, marginBottom: 18 },
   sidebarFooter: { borderColor: '#36524a', borderRadius: 14, borderWidth: 1, padding: 14 },
   sidebarFooterTitle: { color: '#f4eee0', fontSize: 12, fontWeight: '800' },
   sidebarFooterText: { color: '#b2c3b8', fontSize: 11, lineHeight: 16, marginTop: 7 },
