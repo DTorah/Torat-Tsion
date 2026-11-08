@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { apiUrl } from '@/lib/api';
+import { siteName } from '@/lib/site';
 
 export type ShowcaseVideo = {
   id: string;
@@ -55,7 +56,7 @@ export function YouTubePlaybackProvider({ children }: { children: ReactNode }) {
 }
 
 export function InlineYouTubePlayer({ video }: { video: ShowcaseVideo }) {
-  return <View style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torat Sion player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></View>;
+  return <View style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the {siteName} player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></View>;
 }
 
 export function VideoCard({ video, onPlay, playing = false }: { video: ShowcaseVideo; onPlay: () => void; playing?: boolean }) {
@@ -63,7 +64,7 @@ export function VideoCard({ video, onPlay, playing = false }: { video: ShowcaseV
   const [focused, setFocused] = useState(false);
   return <View style={[styles.card, (hovered || focused) && styles.cardHovered, (hovered || focused) && styles.cardHoverState]}>
     <View style={styles.thumbnailWrap}>
-      {playing ? <Pressable accessibilityLabel={`Focus player for ${video.title}`} onPress={onPlay} style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the Torat Sion player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></Pressable> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>
+      {playing ? <Pressable accessibilityLabel={`Focus player for ${video.title}`} onPress={onPlay} style={styles.inlinePlayer}><Text style={styles.playerLoadingText}>Playing in the {siteName} player</Text><Text numberOfLines={1} style={styles.inlineTitle}>{video.title}</Text></Pressable> : <Pressable accessibilityLabel={`Play ${video.title}`} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onPlay} style={styles.thumbnailButton}>
         {video.thumbnailUrl ? <Image contentFit="cover" source={{ uri: video.thumbnailUrl }} style={[styles.thumbnail, (hovered || focused) && styles.thumbnailZoom]} /> : <View style={[styles.thumbnail, styles.fallback, (hovered || focused) && styles.thumbnailZoom]}><Text style={styles.fallbackText}>TORAT TSION</Text></View>}
         <View style={[styles.thumbnailShade, (hovered || focused) && styles.thumbnailShadeVisible]} />
         <View style={[styles.playOverlay, (hovered || focused) && styles.playOverlayVisible]}><Text style={styles.playIcon}>▶</Text></View>
@@ -137,7 +138,7 @@ function GlobalYouTubePlayer() {
 
 const styles = StyleSheet.create({
   shelfSection: { marginBottom: 28, minWidth: 0 },
-  shelfTitle: { color: '#111827', fontSize: 20, fontWeight: '800', marginBottom: 14, maxWidth: '100%' },
+  shelfTitle: { color: '#241b1b', fontSize: 20, fontWeight: '800', marginBottom: 14, maxWidth: '100%' },
   track: { gap: 14, paddingBottom: 8, paddingRight: 20 },
   card: { backgroundColor: '#ffffff', borderRadius: 12, maxWidth: 320, overflow: 'hidden', paddingBottom: 10, width: 300 },
   cardHovered: { shadowColor: '#0f172a', shadowOpacity: 0.16, shadowRadius: 14, transform: [{ scale: 1.015 }] },
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   thumbnailShadeVisible: { opacity: 0.16 },
   playOverlay: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 999, height: 48, justifyContent: 'center', left: '50%', opacity: 0, position: 'absolute', top: '50%', transform: [{ translateX: -24 }, { translateY: -24 }], width: 48 },
   playOverlayVisible: { opacity: 1 },
-  playIcon: { color: '#0052CC', fontSize: 17, marginLeft: 2 },
+  playIcon: { color: '#8f111b', fontSize: 17, marginLeft: 2 },
   fallback: { alignItems: 'center', justifyContent: 'center' },
   fallbackText: { color: '#356078', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   title: { color: '#111827', fontSize: 14, fontWeight: '800', lineHeight: 19, marginHorizontal: 12, marginTop: 10 },
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   inlinePlayer: { alignItems: 'center', backgroundColor: '#0f172a', height: '100%', justifyContent: 'center', padding: 12, width: '100%' },
   inlineTitle: { color: '#cbd5e1', fontSize: 11, marginTop: 6, maxWidth: '90%' },
   playerLoadingText: { color: '#ffffff', fontSize: 12 },
-  globalPlayer: { backgroundColor: '#0b1324', borderColor: '#30486b', borderRadius: 12, borderWidth: 1, bottom: 20, elevation: 12, maxWidth: 640, position: 'fixed' as any, right: 20, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, width: 420 as any, zIndex: 1000 },
+  globalPlayer: { backgroundColor: '#241b1b', borderColor: '#6f2b34', borderRadius: 14, borderWidth: 1, bottom: 24, elevation: 12, maxWidth: 640, position: 'fixed' as any, right: 24, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, width: 420 as any, zIndex: 1000 },
   globalPlayerExpanded: { width: '92vw' as any },
   globalHeader: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 9 },
   globalTitle: { color: '#f8fafc', flex: 1, fontSize: 12, fontWeight: '700' },
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   videoExpandButton: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.68)', borderRadius: 4, height: 30, justifyContent: 'center', width: 30 },
   videoExpandIcon: { color: '#fff', fontSize: 18 },
   globalControls: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'flex-end', padding: 8 },
-  fullscreenButton: { borderColor: '#6f8db6', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
+  fullscreenButton: { borderColor: '#c98c91', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
   fullscreenText: { color: '#e5efff', fontSize: 11, fontWeight: '700' },
   controlClose: { paddingHorizontal: 8, paddingVertical: 6 },
   controlCloseText: { color: '#b7c9e6', fontSize: 11 },

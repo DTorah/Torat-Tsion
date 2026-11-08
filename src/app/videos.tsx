@@ -4,6 +4,7 @@ import { Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions,
 import { apiUrl } from '@/lib/api';
 import { PublicHeader } from '@/components/public-site';
 import { VideoShowcase } from '@/components/video-showcase';
+import { siteName } from '@/lib/site';
 
 type Video = {
   id: string;
@@ -50,23 +51,23 @@ export default function VideosScreen() {
   const isNarrow = width < 900;
   return <ScrollView contentContainerStyle={[styles.page, isNarrow && styles.pageNarrow]}>
     <PublicHeader query={query} setQuery={setQuery} />
-    <View style={styles.hero}><Text style={styles.eyebrow}>TORAT SION · VIDEO LIBRARY</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Browse the complete Torat Sion class library and play any recording without leaving the site.</Text><TextInput accessibilityLabel="Search classes" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
+    <View style={styles.hero}><Text style={styles.eyebrow}>TORAH FARSI · VIDEO LIBRARY</Text><Text style={styles.title}>Learn by watching.</Text><Text style={styles.body}>Browse the complete {siteName} class library and play any recording without leaving the site.</Text><TextInput accessibilityLabel="Search classes" onChangeText={setQuery} placeholder="Search videos by title or topic" placeholderTextColor="#7890a3" style={styles.searchInput} value={query} /></View>
     <View style={[styles.contentLayout, isNarrow && styles.contentLayoutNarrow]}>
       <View style={styles.videoContent}>
         {loading ? <Text style={styles.body}>Loading official classes…</Text> : error ? <Text style={styles.error}>{error}</Text> : !payload?.configured ? <View style={styles.notice}><Text style={styles.noticeTitle}>The video library is not configured</Text><Text style={styles.body}>No placeholder videos are shown until the library is configured.</Text></View> : null}
         {!loading && !error && payload?.configured && (videos.length ? <VideoShowcase initialVideoId={requestedVideo} title="All Shiurim" videos={videos} /> : <Text style={styles.emptyText}>{normalizedQuery ? 'No matching classes were found.' : 'No public classes were returned yet.'}</Text>)}
-        <View style={styles.notice}><Text style={styles.noticeTitle}>Torat Sion video library</Text><Text style={styles.body}>Select any thumbnail to continue watching without leaving this site.</Text></View>
+        <View style={styles.notice}><Text style={styles.noticeTitle}>{siteName} video library</Text><Text style={styles.body}>Select any thumbnail to continue watching without leaving this site.</Text></View>
       </View>
     </View>
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: '#F8F9FA', flexGrow: 1, gap: 22, padding: 28, paddingLeft: Platform.OS === 'web' ? 260 : 28 },
+  page: { backgroundColor: '#fbf7f5', flexGrow: 1, gap: 22, padding: 28, paddingLeft: Platform.OS === 'web' ? 260 : 28 },
   pageNarrow: { padding: 18 },
   hero: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 16, borderWidth: 1, maxWidth: 900, padding: 32 },
-  eyebrow: { color: '#0052CC', fontSize: 12, fontWeight: '800', letterSpacing: 1.4 },
-  title: { color: '#111827', fontSize: 38, fontWeight: '800', marginTop: 12 },
+  eyebrow: { color: '#8f111b', fontSize: 12, fontWeight: '800', letterSpacing: 1.4 },
+  title: { color: '#241b1b', fontSize: 38, fontWeight: '800', marginTop: 12 },
   body: { color: '#4b5563', fontSize: 16, lineHeight: 25, marginTop: 14 },
   searchInput: { backgroundColor: '#fff', borderColor: '#b8d7e6', borderRadius: 10, borderWidth: 1, color: '#102a43', fontSize: 15, marginTop: 22, maxWidth: 560, paddingHorizontal: 15, paddingVertical: 13 },
   contentLayout: { alignItems: 'flex-start', flexDirection: 'row', gap: 22 },

@@ -7,6 +7,7 @@ import { normalizeRecordingTitle } from '@/lib/recording-title';
 import { getShiurSkipSeconds, PLAYBACK_RATES, useListener } from '@/components/listener-provider';
 import { RangeSlider } from '@/components/slider';
 import { SeekBar } from '@/components/seek-bar';
+import { siteName } from '@/lib/site';
 
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
 
@@ -88,7 +89,7 @@ export function MiniPlayer() {
         </View>
         {!minimized && <><Pressable onPress={openPanel} style={styles.identity}>
           <View style={styles.art}>
-            {activeRecording.coverUrl ? <Image source={{ uri: activeRecording.coverUrl }} style={StyleSheet.absoluteFill} /> : <Image source={neutralCover} style={styles.mark} />}
+            {activeRecording.coverUrl ? <Image source={{ uri: activeRecording.coverUrl }} style={StyleSheet.absoluteFill} /> : <Image source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.mark} />}
           </View>
           <View style={styles.copy}>
             <Text style={styles.title} numberOfLines={1}>{normalizeRecordingTitle(activeRecording.title)}</Text>
@@ -114,7 +115,7 @@ export function MiniPlayer() {
         <View pointerEvents="box-none" style={styles.panelAnchor}>
           <View style={styles.panel}>
             <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>Now Playing</Text>
+              <Text style={styles.panelTitle}>{siteName} · Now Playing</Text>
               <Pressable onPress={() => setExpanded(false)} style={styles.closeButton}>
                 <Text style={styles.closeText}>Close</Text>
               </Pressable>
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     right: Platform.OS === 'web' ? 24 : 0,
     width: Platform.OS === 'web' ? 380 : '100%',
     zIndex: 1000,
-    shadowColor: '#98afd0',
+    shadowColor: '#8f111b',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.16,
     shadowRadius: 24,
@@ -230,22 +231,22 @@ const styles = StyleSheet.create({
   utilityButton: { alignItems: 'center', borderRadius: 8, height: 28, justifyContent: 'center', width: 28 },
   utilityIcon: { color: '#4b5563', fontSize: 18, lineHeight: 20 },
   identity: { alignItems: 'center', flex: 1, flexDirection: 'row' },
-  art: { alignItems: 'center', backgroundColor: '#edf5ff', borderRadius: 12, height: 44, justifyContent: 'center', overflow: 'hidden', width: 44 },
+  art: { alignItems: 'center', backgroundColor: '#fbe8e9', borderRadius: 12, height: 44, justifyContent: 'center', overflow: 'hidden', width: 44 },
   mark: { height: 30, resizeMode: 'contain', width: 30 },
   copy: { flex: 1, marginLeft: 10 },
   title: { color: '#142950', fontSize: 13, fontWeight: '700' },
   speaker: { color: '#5b6e8d', fontSize: 11, marginTop: 3 },
   rightControls: { alignItems: 'center', flexDirection: 'row', gap: 8, marginLeft: 8 },
-  play: { alignItems: 'center', backgroundColor: '#0052CC', borderRadius: 999, height: 40, justifyContent: 'center', width: 40 },
+  play: { alignItems: 'center', backgroundColor: '#8f111b', borderRadius: 999, height: 40, justifyContent: 'center', width: 40 },
   playText: { color: '#ffffff', fontWeight: '800' },
-  expand: { backgroundColor: '#edf5ff', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-  expandText: { color: '#1d4ea8', fontSize: 11, fontWeight: '700' },
+  expand: { backgroundColor: '#fbe8e9', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  expandText: { color: '#8f111b', fontSize: 11, fontWeight: '700' },
   progress: { backgroundColor: '#e5e7eb', height: 6, marginTop: 10, overflow: 'hidden' },
-  fill: { backgroundColor: '#0052CC', height: 6 },
+  fill: { backgroundColor: '#c51f2b', height: 6 },
   panelAnchor: { alignItems: 'center', backgroundColor: 'rgba(17,24,39,0.28)', bottom: 0, justifyContent: 'center', left: 0, position: 'fixed' as never, right: 0, top: 0, zIndex: 1100 },
   panel: {
     backgroundColor: '#fff',
-    borderColor: '#dfeaf7',
+    borderColor: '#ead1d3',
     borderRadius: 16,
     borderWidth: 1,
     maxHeight: '90%',
@@ -257,16 +258,16 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
   },
   panelHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  panelTitle: { color: '#142950', fontSize: 18, fontWeight: '800' },
+  panelTitle: { color: '#241b1b', fontSize: 18, fontWeight: '800' },
   closeButton: { paddingHorizontal: 8, paddingVertical: 4 },
-  closeText: { color: '#2d6cdf', fontWeight: '700' },
+  closeText: { color: '#8f111b', fontWeight: '700' },
   panelArtWrap: { alignItems: 'center', marginBottom: 8 },
   panelArt: { borderRadius: 14, height: 92, width: 92 },
   panelLogo: { height: 52, resizeMode: 'contain', width: 52 },
   panelRecordingTitle: { color: '#142950', fontSize: 17, fontWeight: '800', textAlign: 'center' },
   panelSpeaker: { color: '#5b6e8d', fontSize: 12, marginTop: 3, textAlign: 'center' },
   seekBar: { backgroundColor: '#dfeaf7', borderRadius: 999, height: 8, marginTop: 10, overflow: 'hidden' },
-  seekFill: { backgroundColor: '#2d6cdf', height: '100%' },
+  seekFill: { backgroundColor: '#c51f2b', height: '100%' },
   timesRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   timeText: { color: '#5b6e8d', fontSize: 12 },
   skipButton: { backgroundColor: '#edf5ff', borderColor: '#bfd4ff', borderRadius: 999, borderWidth: 1, marginTop: 14, paddingHorizontal: 14, paddingVertical: 8 },

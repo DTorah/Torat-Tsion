@@ -15,7 +15,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Head><title>Torat Tsion | Torah listening</title><meta name="description" content="Listen to shiurim and Torah recordings from Torat Tsion." /></Head>
+      <Head><title>Torah Farsi | A project of Torat Sion</title><meta name="description" content="Listen to Persian Torah classes and recordings. A project of Torat Sion." /></Head>
       <ListenerProvider>
         <YouTubePlaybackProvider>
         <AnimatedSplashOverlay />

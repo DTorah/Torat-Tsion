@@ -12,12 +12,12 @@ import { fetchPublicJson } from '@/lib/public-api-cache';
 import { apiUrl, toListenerRecording } from '@/lib/public-recordings';
 import { ToratWelcome } from '@/components/torat-sections';
 import { VideoShowcase } from '@/components/video-showcase';
-import { donationUrl } from '@/lib/site';
+import { brandColors, donationUrl, siteAttribution, siteName } from '@/lib/site';
 import { ToratSionHome } from '@/components/torat-sion-home';
 
 const Link: any = RouterLink;
 const neutralCover = require('@/assets/shiur-covers/fallback.png');
-const toratTsionLogo = require('@/assets/images/icon.png');
+const torahFarsiLogo = require('@/assets/images/torah-farsi-logo.webp');
 
 function LineIcon({ name }: { name: 'home' | 'shiurim' | 'parsha' | 'rabbi' | 'donate' | 'library' | 'videos' | 'search' }) {
   const paths = {
@@ -100,9 +100,9 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
     <>
       <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
         <Link href="/" asChild>
-          <Pressable accessibilityLabel="Torat Sion home" style={styles.brandPressable}>
-            <Image accessibilityLabel="Torat Tsion logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
-            <Text style={styles.logo}>Torat Sion</Text>
+          <Pressable accessibilityLabel="Torah Farsi home" style={styles.brandPressable}>
+            <Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={torahFarsiLogo} style={styles.brandLogo} />
+            <View><Text style={styles.logo}>{siteName}</Text><Text style={styles.attribution}>{siteAttribution}</Text></View>
           </Pressable>
         </Link>
         <View style={[styles.nav, isMobile && styles.navMobile]}>
@@ -124,7 +124,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
       </View>
 
       <View style={[styles.header, isMobile && styles.headerMobile]}>
-        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><Text style={styles.mobileBrandText}>Torat Sion</Text></View>
+        <View style={styles.mobileBrand}><Image contentFit="contain" source={torahFarsiLogo} style={styles.mobileBrandLogo} /><View><Text style={styles.mobileBrandText}>{siteName}</Text><Text style={styles.mobileAttribution}>{siteAttribution}</Text></View></View>
         <View style={styles.search}>
         <Pressable accessibilityLabel="Submit search" onPress={submitSearch} style={styles.searchIcon}><LineIcon name="search" /></Pressable>
         <TextInput
@@ -179,7 +179,7 @@ function RecordingCard({ recording }: { recording: Recording }) {
       <View style={styles.cardBody}>
         <Text style={styles.cardCategory}>{recording.category || 'Torah'}</Text>
         <Text numberOfLines={4} style={styles.cardTitle}>{normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}</Text>
-        <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || 'Torat Tsion'}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
+        <Text numberOfLines={1} style={styles.cardMeta}>{recording.rabbiName || siteName}{recording.durationSeconds ? ` · ${formatDuration(recording.durationSeconds)}` : ''}</Text>
         <View style={styles.cardActions}>
           <Pressable
             accessibilityLabel={`${active && status.playing ? 'Pause' : 'Play'} ${normalizeRecordingTitle(recording.title || recording.name, recording.recordedDateLabel || '')}`}
@@ -468,7 +468,7 @@ export function PublicHome() {
 }
 
 export function PublicRecordingList({ title, description, recordings, timeFrameCategoryId }: { title: string; description?: string; recordings: Recording[]; timeFrameCategoryId?: string }) {
-  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>Torat Tsion</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<TimeFrameBuilder categoryId={timeFrameCategoryId} categoryName={timeFrameCategoryId ? title : undefined} recordings={recordings} /><View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
+  return <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}><View style={styles.shell}><PublicHeader query="" setQuery={() => {}} /><Text style={styles.pageEyebrow}>{siteName}</Text><Text style={styles.pageTitle}>{title}</Text>{description && <Text style={styles.pageDescription}>{description}</Text>}<TimeFrameBuilder categoryId={timeFrameCategoryId} categoryName={timeFrameCategoryId ? title : undefined} recordings={recordings} /><View style={styles.recordingGrid}>{recordings.map((recording) => <RecordingCard key={recording.id} recording={recording} />)}</View>{!recordings.length && <Text style={styles.stateText}>No recordings found.</Text>}</View></ScrollView>;
 }
 
 export function PublicDirectory({ title, description, items, kind }: { title: string; description: string; items: Array<Rabbi | Category>; kind: 'rabbi' | 'category' | 'collection' }) {
@@ -588,22 +588,24 @@ const styles = StyleSheet.create({
   sidebar: { backgroundColor: '#ffffff', borderRightColor: '#e5e7eb', borderRightWidth: 1, bottom: 0, left: 0, paddingHorizontal: 18, paddingTop: 26, position: 'fixed' as never, top: 0, width: 232, zIndex: 50 },
   sidebarMobile: { borderBottomColor: '#e5e7eb', borderBottomWidth: 1, borderRightWidth: 0, bottom: 'auto', flexDirection: 'row', height: 64, left: 0, paddingHorizontal: 14, paddingTop: 10, position: 'relative' as never, right: 0, top: 0, width: '100%' },
   brandPressable: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  brandLogo: { borderRadius: 12, height: 38, width: 38 },
+  brandLogo: { borderRadius: 12, height: 48, width: 48 },
   mobileBrand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 12 },
-  mobileBrandLogo: { borderRadius: 8, height: 32, width: 32 },
-  mobileBrandText: { color: '#111827', fontSize: 17, fontWeight: '800' },
+  mobileBrandLogo: { borderRadius: 8, height: 38, width: 38 },
+  mobileBrandText: { color: '#241b1b', fontSize: 17, fontWeight: '800' },
+  attribution: { color: '#8f111b', fontSize: 9, fontWeight: '800', letterSpacing: 0.3, marginTop: 1 },
+  mobileAttribution: { color: '#8f111b', fontSize: 8, fontWeight: '700', marginTop: 1 },
   brandTextWrap: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap' },
-  logo: { color: '#111827', fontSize: 19, fontWeight: '800', letterSpacing: 0.2 },
+  logo: { color: '#241b1b', fontSize: 19, fontWeight: '800', letterSpacing: 0.2 },
   tagline: { color: '#7d8ca3', fontSize: 11, marginTop: 2 },
   nav: { gap: 7, marginTop: 42 },
   navMobile: { flexDirection: 'row', flex: 1, gap: 2, marginLeft: 8, marginTop: 0, overflow: 'hidden' },
   navItem: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 12 },
   donateNavItem: { marginTop: 4 },
-  navItemActive: { backgroundColor: '#eaf2ff' },
+  navItemActive: { backgroundColor: '#fbe8e9' },
   navIconFallback: { color: '#6b7280', fontSize: 18, width: 22 },
   navItemHover: { backgroundColor: '#f1f5f9' },
   navText: { color: '#4b5563', fontSize: 14, fontWeight: '600' },
-  navTextActive: { color: '#0052CC', fontWeight: '800' },
+  navTextActive: { color: '#8f111b', fontWeight: '800' },
   playerLinkButton: { borderColor: '#c7d8f8', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   playerLink: { color: '#0052CC', fontSize: 12, fontWeight: '700' },
   adminLinkButton: { paddingHorizontal: 12, paddingVertical: 8 },
@@ -620,11 +622,11 @@ const styles = StyleSheet.create({
   searchInput: { color: '#111827', flex: 1, fontSize: 14, outlineStyle: 'none' as never },
   searchClear: { alignItems: 'center', backgroundColor: '#dbe6f6', borderRadius: 999, height: 20, justifyContent: 'center', marginRight: 6, width: 20 },
   searchClearText: { color: '#5b6e8d', fontSize: 11, fontWeight: '700' },
-  searchSubmit: { backgroundColor: '#0052CC', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  searchSubmit: { backgroundColor: '#8f111b', borderRadius: 999, marginLeft: 6, paddingHorizontal: 14, paddingVertical: 8 },
   searchSubmitText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   hero: {
-    backgroundColor: '#edf5ff',
-    borderColor: '#dfeaf7',
+    backgroundColor: '#fbe8e9',
+    borderColor: '#f2cacc',
     borderRadius: 28,
     borderWidth: 1,
     flexDirection: 'row',

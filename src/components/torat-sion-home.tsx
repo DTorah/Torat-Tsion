@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { InlineYouTubePlayer, type ShowcaseVideo, useYouTubePlayback } from '@/components/video-showcase';
 import { apiUrl } from '@/lib/api';
 import { editorAttributes, editorElementId } from '@/lib/editor-elements';
+import { brandColors, donationUrl, siteAttribution, siteName } from '@/lib/site';
 
 type Video = ShowcaseVideo & {
   description?: string;
@@ -144,13 +145,17 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
     ['favorites', 'Favorites'],
     ['recent', 'Recently Played'],
   ] as const;
+  const openDonation = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(donationUrl);
+    else void Linking.openURL(donationUrl);
+  };
   return <View style={[styles.sidebar as import('react-native').ViewStyle]}>
     <Pressable onPress={() => scrollToSection('top')} style={styles.brand}>
-      <Image contentFit="contain" source={require('@/assets/images/icon.png')} style={styles.brandLogo} />
-      <View><Text style={styles.brandName}>Torat Sion</Text><Text style={styles.brandCaption}>RABBI BAKHSHI</Text></View>
+      <Image contentFit="contain" source={require('@/assets/images/torah-farsi-logo.webp')} style={styles.brandLogo} />
+      <View><Text style={styles.brandName}>{siteName}</Text><Text style={styles.brandCaption}>{siteAttribution}</Text></View>
     </Pressable>
-    <View style={styles.nav}>{items.map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={[styles.navItem, index === 0 ? styles.navItemActive : null]}><Text style={styles.navGlyph}>{['⌂', '✦', '▤', '◒', '◈', '▥', '★', '◷'][index]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable></View>
-    <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A home for Torah learning</Text><Text style={styles.sidebarFooterText}>Official classes from the Torat Sion library.</Text></View>
+    <View style={styles.nav}>{items.map(([id, label], index) => <Pressable key={id} onPress={() => scrollToSection(id)} style={[styles.navItem, index === 0 ? styles.navItemActive : null]}><Text style={styles.navGlyph}>{['⌂', '✦', '▤', '◒', '◈', '▥', '★', '◷'][index]}</Text><Text style={styles.navLabel}>{label}</Text></Pressable>)}<Pressable onPress={onSearch} style={styles.navItem}><Text style={styles.navGlyph}>⌕</Text><Text style={styles.navLabel}>Search</Text></Pressable><Pressable accessibilityRole="link" accessibilityLabel="Donate to TorahHelp" onPress={openDonation} style={styles.donateNavItem}><Text style={styles.navGlyph}>♡</Text><Text style={styles.donateNavLabel}>Support Torah learning</Text></Pressable></View>
+    <View style={styles.sidebarFooter}><Text style={styles.sidebarFooterTitle}>A welcoming home for Torah learning</Text><Text style={styles.sidebarFooterText}>{siteAttribution}</Text></View>
   </View>;
 }
 
@@ -223,6 +228,10 @@ export function ToratSionHome() {
   const playVideo = (video: Video) => { playSharedVideo(video); setRecentIds((current) => { const next = [video.id, ...current.filter((id) => id !== video.id)].slice(0, 12); void AsyncStorage.setItem('torat-sion.youtube-recent', JSON.stringify(next)); return next; }); };
   const activeFeature = featured[featureIndex] || videos[0];
   const search = () => scrollToSection('all');
+  const openDonation = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(donationUrl);
+    else void Linking.openURL(donationUrl);
+  };
   const customSections = (builder?.sections || []).filter((section) => section.enabled !== false);
   const editorOverrides = builder?.elements || {};
   const renderCustomSection = (section: BuilderSection) => {
@@ -235,10 +244,10 @@ export function ToratSionHome() {
     return <View key={section.id} style={[styles.customSection, { backgroundColor: section.background || '#fff' }]}>{bannerVideo?.thumbnailUrl ? <Image contentFit="cover" source={{ uri: bannerVideo.thumbnailUrl }} style={styles.customSectionImage} /> : null}<Text style={[styles.customSectionTitle, { color: section.textColor || builder?.design?.text || '#172844' }]}>{section.banner?.title || section.title}</Text>{section.subtitle || section.banner?.description || section.description ? <Text style={styles.customSectionSubtitle}>{section.subtitle || section.banner?.description || section.description}</Text> : null}{section.banner?.buttonText && (bannerVideo || videos[0]) ? <Pressable onPress={() => section.banner?.buttonLink ? router.push(section.banner.buttonLink as never) : playVideo(bannerVideo || videos[0])} style={styles.customSectionButton}><Text style={styles.customSectionButtonText}>{section.banner.buttonText}</Text></Pressable> : null}</View>;
   };
 
-  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || '#f7f5f0' }]}><Sidebar onSearch={search} /><ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><Text style={styles.builderHeaderTitle}>{builder?.design?.header?.title || 'Torat Sion'}</Text>{builder?.design?.header?.subtitle ? <Text style={styles.builderHeaderSubtitle}>{builder.design.header.subtitle}</Text> : null}<View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
-    <View style={styles.topbar}><View><Text style={styles.context}>TORAT SION · RABBI BAKHSHI</Text><Text style={styles.pageTitle}>Discover Torah that stays with you.</Text></View><View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput accessibilityLabel="Search Rabbi Bakhshi shiurim" onChangeText={setQuery} onSubmitEditing={search} placeholder="Search shiurim, Parsha, topics..." placeholderTextColor="#8390a3" style={styles.searchInput} value={query} /></View></View>
+  return <View nativeID="top" style={[styles.root, { backgroundColor: builder?.design?.background || brandColors.background }]}><Sidebar onSearch={search} /><ScrollView style={styles.main} contentContainerStyle={[styles.mainContent, isMobile && styles.mainContentMobile]}><View style={styles.builderHeader}><Text style={styles.builderHeaderTitle}>{builder?.design?.header?.title || siteName}</Text><Text style={styles.builderHeaderSubtitle}>{builder?.design?.header?.subtitle || siteAttribution}</Text><View style={styles.builderHeaderLinks}>{(builder?.design?.header?.links || []).map((link) => <Pressable key={link.id} accessibilityRole="link" onPress={() => router.push(link.href as never)}><Text style={styles.builderHeaderLink}>{link.label}</Text></Pressable>)}</View></View>
+    <View style={styles.topbar}><View><Text style={styles.context}>TORAH FARSI · {siteAttribution.toUpperCase()}</Text><Text style={styles.pageTitle}>Discover Torah that stays with you.</Text></View><View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput accessibilityLabel="Search Torah Farsi shiurim" onChangeText={setQuery} onSubmitEditing={search} placeholder="Search shiurim, Parsha, topics..." placeholderTextColor="#8390a3" style={styles.searchInput} value={query} /></View></View>
     {loading ? <View style={styles.loading}><ActivityIndicator color="#1d5fc4" size="large" /><Text style={styles.loadingText}>Gathering Rabbi Bakhshi's latest shiurim…</Text></View> : error ? <View style={styles.errorState}><Text style={styles.errorTitle}>The library is taking a moment</Text><Text style={styles.errorText}>{error}</Text></View> : activeFeature ? <View style={styles.hero}><Image contentFit="cover" source={{ uri: activeFeature.thumbnailUrl || '' }} style={styles.heroImage} /><View style={styles.heroShade} /><View style={styles.heroContent}><Text style={styles.heroEyebrow}>FEATURED SHIUR · RABBI BAKHSHI</Text><Text numberOfLines={2} style={styles.heroTitle}>{activeFeature.title}</Text><Text numberOfLines={2} style={styles.heroDescription}>{activeFeature.description || 'Explore an official Rabbi Bakhshi class from the Torat Sion collection.'}</Text><View style={styles.heroActions}><Pressable onPress={() => playVideo(activeFeature)} style={styles.listenButton}><Text style={styles.listenButtonText}>▶      Play Shiur</Text></Pressable><Pressable onPress={() => toggleFavorite(activeFeature.id)} style={styles.heroFavorite}><Text style={styles.heroFavoriteText}>{favoriteIds.has(activeFeature.id) ? '★ Saved' : '☆ Save'}</Text></Pressable></View><View style={styles.heroDots}>{featured.map((video, index) => <Pressable key={video.id} accessibilityLabel={`Show featured shiur ${index + 1}`} onPress={() => setFeatureIndex(index)} style={[styles.heroDot, index === featureIndex && styles.heroDotActive]} />)}</View></View></View> : <View style={styles.errorState}><Text style={styles.errorTitle}>No public classes are available yet.</Text></View>}
-    {!loading && !error && <>{customSections.map(renderCustomSection)}<Shelf id="new" activeVideoId={activeVideo?.id || null} title="New Shiurim" videos={latest} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="live" activeVideoId={activeVideo?.id || null} title="Live & Upcoming Broadcasts" videos={liveVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="shabbat-shalom" activeVideoId={activeVideo?.id || null} title="Shabbat Shalom Classes" videos={shabbatVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="recent" activeVideoId={activeVideo?.id || null} title="Continue Listening" videos={recentIds.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf title="Trending Shiurim" activeVideoId={activeVideo?.id || null} videos={trending} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="parsha" activeVideoId={activeVideo?.id || null} title="Shiurim by Parsha" videos={parsha} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="topics" activeVideoId={activeVideo?.id || null} title="Explore Torah Topics" videos={topics} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><View nativeID="series">{seriesGroups.map((group) => <Shelf key={group.label} activeVideoId={activeVideo?.id || null} title={`Series · ${group.label}`} videos={group.videos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />)}</View><Shelf id="favorites" activeVideoId={activeVideo?.id || null} title="Favorites" videos={filtered.filter((video) => favoriteIds.has(video.id))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><AllShiurimGrid videos={filtered} favorites={favoriteIds} activeVideoId={activeVideo?.id || null} onFavorite={toggleFavorite} onPlay={playVideo} /></>}<View style={styles.builderFooter}><Text style={styles.builderFooterTitle}>{builder?.design?.footer?.title || 'Torat Sion'}</Text>{builder?.design?.footer?.subtitle ? <Text style={styles.builderFooterSubtitle}>{builder.design.footer.subtitle}</Text> : null}</View>
+    {!loading && !error && <><Pressable accessibilityRole="link" accessibilityLabel="Donate to TorahHelp" onPress={openDonation} style={styles.donationCallout}><View><Text style={styles.donationEyebrow}>SUPPORT TORAH LEARNING</Text><Text style={styles.donationTitle}>Help keep Torah accessible</Text><Text style={styles.donationText}>Your support helps this welcoming library continue to serve the community.</Text></View><Text style={styles.donationAction}>Donate →</Text></Pressable>{customSections.map(renderCustomSection)}<Shelf id="new" activeVideoId={activeVideo?.id || null} title="New Shiurim" videos={latest} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="live" activeVideoId={activeVideo?.id || null} title="Live & Upcoming Broadcasts" videos={liveVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="shabbat-shalom" activeVideoId={activeVideo?.id || null} title="Shabbat Shalom Classes" videos={shabbatVideos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} onViewAll={() => scrollToSection('all')} /><Shelf id="recent" activeVideoId={activeVideo?.id || null} title="Continue Listening" videos={recentIds.map((id) => videos.find((video) => video.id === id)).filter((video): video is Video => Boolean(video))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf title="Trending Shiurim" activeVideoId={activeVideo?.id || null} videos={trending} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="parsha" activeVideoId={activeVideo?.id || null} title="Shiurim by Parsha" videos={parsha} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><Shelf id="topics" activeVideoId={activeVideo?.id || null} title="Explore Torah Topics" videos={topics} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><View nativeID="series">{seriesGroups.map((group) => <Shelf key={group.label} activeVideoId={activeVideo?.id || null} title={`Series · ${group.label}`} videos={group.videos} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} />)}</View><Shelf id="favorites" activeVideoId={activeVideo?.id || null} title="Favorites" videos={filtered.filter((video) => favoriteIds.has(video.id))} favorites={favoriteIds} onFavorite={toggleFavorite} onPlay={playVideo} /><AllShiurimGrid videos={filtered} favorites={favoriteIds} activeVideoId={activeVideo?.id || null} onFavorite={toggleFavorite} onPlay={playVideo} /></>}<View style={styles.builderFooter}><Text style={styles.builderFooterTitle}>{builder?.design?.footer?.title || siteName}</Text><Text style={styles.builderFooterSubtitle}>{builder?.design?.footer?.subtitle || siteAttribution}</Text></View>
   </ScrollView></View>;
 }
 
@@ -249,21 +258,28 @@ const styles: Record<string, any> = StyleSheet.create({
   builderHeaderSubtitle: { color: '#667085', marginTop: 4 },
   builderHeaderLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 10 },
   builderHeaderLink: { color: '#0052CC', fontWeight: '700' },
-  builderFooter: { borderTopColor: '#d9e2ef', borderTopWidth: 1, marginTop: 32, paddingVertical: 28 },
-  builderFooterTitle: { color: '#172844', fontSize: 18, fontWeight: '800' },
-  builderFooterSubtitle: { color: '#667085', marginTop: 5 },
-  sidebar: { backgroundColor: '#101c35', borderRightColor: '#233252', borderRightWidth: 1, justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 28, width: 238 },
+  builderFooter: { borderTopColor: '#ead8d5', borderTopWidth: 1, marginTop: 32, paddingVertical: 28 },
+  builderFooterTitle: { color: brandColors.ink, fontSize: 18, fontWeight: '800' },
+  builderFooterSubtitle: { color: brandColors.silver, marginTop: 5 },
+  donationCallout: { alignItems: 'center', backgroundColor: brandColors.burgundy, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28, paddingHorizontal: 22, paddingVertical: 18 },
+  donationEyebrow: { color: '#f7d8d8', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  donationTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 5 },
+  donationText: { color: '#f6dfe0', fontSize: 12, marginTop: 4 },
+  donationAction: { color: '#fff', fontSize: 13, fontWeight: '900', marginLeft: 16 },
+  sidebar: { backgroundColor: brandColors.ink, borderRightColor: '#493133', borderRightWidth: 1, justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 28, width: 238 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 11, marginBottom: 42, paddingHorizontal: 8 },
   brandLogo: { height: 40, width: 40 },
   brandName: { color: '#fbfaf5', fontSize: 20, fontWeight: '800', letterSpacing: 0.2 },
-  brandCaption: { color: '#cda96c', fontSize: 9, fontWeight: '800', letterSpacing: 1.4, marginTop: 3 },
+  brandCaption: { color: '#f1b6b8', fontSize: 9, fontWeight: '800', letterSpacing: 0.6, marginTop: 3 },
   nav: { gap: 6, flex: 1 },
   navItem: { alignItems: 'center', borderRadius: 12, flexDirection: 'row', gap: 14, paddingHorizontal: 13, paddingVertical: 12 },
-  navItemActive: { backgroundColor: '#1e3359' },
-  navItemHover: { backgroundColor: '#1a2b4a' },
-  navGlyph: { color: '#afbdd2', fontSize: 19, textAlign: 'center', width: 22 },
+  navItemActive: { backgroundColor: '#5e252c' },
+  navItemHover: { backgroundColor: '#43272b' },
+  navGlyph: { color: '#f1b6b8', fontSize: 19, textAlign: 'center', width: 22 },
   navLabel: { color: '#d8e0ec', fontSize: 14, fontWeight: '600' },
-  sidebarFooter: { borderColor: '#2d3d5d', borderRadius: 14, borderWidth: 1, padding: 14 },
+  donateNavItem: { backgroundColor: '#a91d2a', borderRadius: 12, marginTop: 12, paddingHorizontal: 13, paddingVertical: 12 },
+  donateNavLabel: { color: '#fff', flex: 1, fontSize: 13, fontWeight: '800' },
+  sidebarFooter: { borderColor: '#624044', borderRadius: 14, borderWidth: 1, padding: 14 },
   sidebarFooterTitle: { color: '#f4eee0', fontSize: 12, fontWeight: '800' },
   sidebarFooterText: { color: '#94a4bd', fontSize: 11, lineHeight: 16, marginTop: 7 },
   main: { flex: 1, minWidth: 0 },
@@ -271,7 +287,7 @@ const styles: Record<string, any> = StyleSheet.create({
   mainContentMobile: { paddingHorizontal: 18, paddingTop: 22 },
   topbar: { alignItems: 'flex-end', flexDirection: 'row', gap: 24, justifyContent: 'space-between', marginBottom: 30 },
   context: { color: '#2b66bc', fontSize: 11, fontWeight: '800', letterSpacing: 1.7 },
-  pageTitle: { color: '#14213d', fontSize: 30, fontWeight: '800', marginTop: 8 },
+  pageTitle: { color: brandColors.ink, fontSize: 30, fontWeight: '800', marginTop: 8 },
   searchBox: { alignItems: 'center', backgroundColor: '#fff', borderColor: '#e4e0d7', borderRadius: 13, borderWidth: 1, flexDirection: 'row', maxWidth: 360, paddingHorizontal: 14, width: '33%' },
   searchIcon: { color: '#41648f', fontSize: 22 },
   searchInput: { color: '#172844', flex: 1, fontSize: 13, paddingHorizontal: 10, paddingVertical: 13 },
@@ -279,21 +295,21 @@ const styles: Record<string, any> = StyleSheet.create({
   heroImage: { backgroundColor: '#172844', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   heroShade: { backgroundColor: 'rgba(7,18,40,0.64)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   heroContent: { bottom: 0, left: 0, maxWidth: 690, padding: 38, position: 'absolute' },
-  heroEyebrow: { color: '#e3c88f', fontSize: 11, fontWeight: '800', letterSpacing: 1.6 },
+  heroEyebrow: { color: '#f1b6b8', fontSize: 11, fontWeight: '800', letterSpacing: 1.6 },
   heroTitle: { color: '#fff', fontSize: 35, fontWeight: '800', lineHeight: 43, marginTop: 12 },
   heroDescription: { color: '#d7dfeb', fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 590 },
   heroActions: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 20 },
-  listenButton: { backgroundColor: '#d1a96b', borderRadius: 10, paddingHorizontal: 19, paddingVertical: 12 },
+  listenButton: { backgroundColor: brandColors.red, borderRadius: 10, paddingHorizontal: 19, paddingVertical: 12 },
   listenButtonText: { color: '#17233d', fontSize: 13, fontWeight: '800' },
   heroFavorite: { borderColor: '#c9d4e4', borderRadius: 10, borderWidth: 1, paddingHorizontal: 17, paddingVertical: 11 },
   heroFavoriteText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   heroDots: { flexDirection: 'row', gap: 6, marginTop: 22 },
   heroDot: { backgroundColor: '#9eabc0', borderRadius: 5, height: 7, opacity: 0.6, width: 7 },
-  heroDotActive: { backgroundColor: '#e2bd78', opacity: 1, width: 22 },
+  heroDotActive: { backgroundColor: '#f1b6b8', opacity: 1, width: 22 },
   shelf: { marginBottom: 37, minWidth: 0 },
   shelfHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   shelfTitle: { color: '#172844', fontSize: 21, fontWeight: '800' },
-  shelfRule: { backgroundColor: '#d1a96b', height: 2, marginTop: 7, width: 32 },
+  shelfRule: { backgroundColor: brandColors.red, height: 2, marginTop: 7, width: 32 },
   viewAll: { color: '#2b66bc', fontSize: 12, fontWeight: '800' },
   shelfTrack: { gap: 15, paddingBottom: 8, paddingRight: 20 },
   card: { backgroundColor: '#fff', borderColor: '#e7e2d9', borderRadius: 14, borderWidth: 1, overflow: 'hidden', position: 'relative', width: 224 },
