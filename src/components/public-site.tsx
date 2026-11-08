@@ -98,7 +98,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
         <Link href="/" asChild>
           <Pressable accessibilityLabel="Torah Farsi home" style={styles.brandPressable}>
             <Image accessibilityLabel="Torah Farsi logo" contentFit="contain" source={toratTsionLogo} style={styles.brandLogo} />
-            <View><Text style={styles.logo}>Torah Farsi</Text><Text style={styles.projectByline}>A project of Torat Sion</Text></View>
+            <View style={styles.brandIdentityText}><Text style={styles.logo}>Torah Farsi</Text><Text style={styles.projectByline}>Project of Torat Sion of Great Neck Inc</Text></View>
           </Pressable>
         </Link>
         <View style={[styles.nav, isMobile && styles.navMobile]}>
@@ -120,7 +120,7 @@ export function PublicHeader({ query, setQuery, onSubmit }: { query: string; set
       </View>
 
       <View style={[styles.header, isMobile && styles.headerMobile]}>
-        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><View><Text style={styles.mobileBrandText}>Torah Farsi</Text><Text style={styles.projectByline}>A project of Torat Sion</Text></View></View>
+        <View style={styles.mobileBrand}><Image contentFit="contain" source={toratTsionLogo} style={styles.mobileBrandLogo} /><View style={styles.brandIdentityText}><Text style={styles.mobileBrandText}>Torah Farsi</Text><Text style={styles.projectByline}>Project of Torat Sion of Great Neck Inc</Text></View></View>
         <View style={styles.search}>
         <Pressable accessibilityLabel="Submit search" onPress={submitSearch} style={styles.searchIcon}><LineIcon name="search" /></Pressable>
         <TextInput
@@ -535,7 +535,8 @@ function PrivacySection({ title, children }: { title: string; children: ReactNod
 }
 
 const styles = StyleSheet.create({
-  projectByline: { color: '#8f111b', fontSize: 10, marginTop: 5 },
+  brandIdentityText: { flexShrink: 1, minWidth: 0 },
+  projectByline: { color: '#8f111b', fontSize: 10, lineHeight: 15, marginTop: 5 },
   page: { backgroundColor: '#F8F9FA', flex: 1 },
   pageContent: { paddingBottom: 100 },
   shell: { alignSelf: 'center', marginLeft: Platform.OS === 'web' ? 232 : 0, maxWidth: 1280, paddingHorizontal: 36, width: '100%' },
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
   sidebarMobile: { borderBottomColor: '#e5e7eb', borderBottomWidth: 1, borderRightWidth: 0, bottom: 'auto', flexDirection: 'row', height: 64, left: 0, paddingHorizontal: 14, paddingTop: 10, position: 'relative' as never, right: 0, top: 0, width: '100%' },
   brandPressable: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandLogo: { borderRadius: 12, height: 48, width: 48 },
-  mobileBrand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 12 },
+  mobileBrand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginRight: 12, flexShrink: 1 },
   mobileBrandLogo: { borderRadius: 8, height: 32, width: 32 },
   mobileBrandText: { color: '#111827', fontSize: 17, fontWeight: '800' },
   brandTextWrap: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap' },
