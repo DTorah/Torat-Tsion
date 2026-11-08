@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Torah Farsi",
-    "slug": "torat-tsion",
+    "slug": "torah-farsi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/torah-farsi-logo.png",
