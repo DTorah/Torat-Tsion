@@ -914,7 +914,7 @@ function normalizeHomepageBuilder(value) {
   const draft = source.draft && typeof source.draft === 'object' ? source.draft : defaultContent.homepageBuilder.draft;
   const sections = (Array.isArray(draft.sections) ? draft.sections : []).map((section, index) => {
     const item = section && typeof section === 'object' ? section : {};
-    const type = ['video-shelf', 'keyword-shelf', 'featured-banner', 'grid', 'carousel', 'playlist', 'announcement', 'text', 'image', 'category-collection'].includes(item.type) ? item.type : 'video-shelf';
+    const type = ['builtin-shelf', 'video-shelf', 'keyword-shelf', 'featured-banner', 'grid', 'carousel', 'playlist', 'announcement', 'text', 'image', 'category-collection'].includes(item.type) ? item.type : 'video-shelf';
     const number = (value, fallback, minimum, maximum) => {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
